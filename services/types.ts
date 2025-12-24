@@ -91,6 +91,8 @@ export interface LoginRequest {
 }
 
 export interface AuthResponse {
+  user: any;
+  token: any;
   accessToken: string;
   refreshToken: string;
 }
@@ -101,6 +103,7 @@ export interface RoleDTO {
 }
 
 export interface UserDTO {
+  user: any;
   id: number;
   email: string;
   fullName?: string;

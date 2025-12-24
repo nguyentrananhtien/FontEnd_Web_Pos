@@ -417,7 +417,7 @@ export const orderApi = {
     returnUrl: string;
   }): Promise<{ paymentUrl: string }> => {
     const response = await axiosInstance.post<{ paymentUrl: string }>(
-      API_CONFIG.ENDPOINTS.VNPAY_CREATE_PAYMENT,
+      API_CONFIG.ENDPOINTS.PAYMENT_CREATE,
       data
     );
     return response.data;
