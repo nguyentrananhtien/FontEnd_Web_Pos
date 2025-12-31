@@ -1,32 +1,31 @@
+import { useAuth } from '@/providers/auth-provider';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React from 'react';
-import { Text, TouchableOpacity, View, Alert } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useAuth } from '@/providers/auth-provider';
+import { Alert, Text, TouchableOpacity, View } from 'react-native';
 
 export default function HomeScreen() {
   const { logout, user } = useAuth();
 
   const handleLogout = async () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await logout();
-              router.replace('/login');
-            } catch (error) {
-              Alert.alert('Error', 'Failed to logout. Please try again.');
-            }
-          },
-        },
-      ]
-    );
+    console.log('handleLogout triggered');
+ 
+
+    if (__DEV__) {
+      console.log('DEV bypass confirmation');
+      try {
+        console.log('calling logout()');
+        await logout();
+        console.log('logout succeeded');
+        router.replace('/login');
+      } catch (error) {
+        console.error('logout failed', error);
+        Alert.alert('Error', 'Failed to logout. Please try again.');
+      }
+      return;
+    }
+
+    
   };
 
   return (
