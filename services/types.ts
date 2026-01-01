@@ -103,6 +103,7 @@ export interface RoleDTO {
 }
 
 export interface UserDTO {
+    name: string;
   user: any;
   id: number;
   email: string;
