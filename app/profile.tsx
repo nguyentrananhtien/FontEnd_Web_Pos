@@ -7,13 +7,16 @@ import {
     ScrollView,
     StyleSheet,
     Alert,
-    ActivityIndicator
+    ActivityIndicator,
+    Image,
+    Modal,
+    Platform
 } from 'react-native';
 import { jwtDecode, JwtPayload } from 'jwt-decode';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 
-// Interface chuẩn khớp với UpdateAccountRequest DTO của bạn
 interface AccountData {
     id: number | null;
     email: string;
@@ -21,6 +24,7 @@ interface AccountData {
     phone: string;
     gender: 'male' | 'female' | 'other';
     dob: string;
+    avatar?: string;
 }
 
 interface MyTokenPayload extends JwtPayload {
@@ -32,6 +36,7 @@ export default function ProfileScreen() {
     const router = useRouter();
     const [isEditing, setIsEditing] = useState<boolean>(false);
     const [isSaving, setIsSaving] = useState<boolean>(false);
+    const [showAvatarModal, setShowAvatarModal] = useState<boolean>(false);
 
     const ACCESSTOKEN = "eyJhbGciOiJIUzUxMiJ9.eyJyb2xlcyI6WyJ2aWV3X2Rhc2hib2FyZCIsInZpZXdfb3JkZXJzIiwiY3VzdG9tZXIiXSwic3ViIjoibGV2dWh1bmc2NzhAZ21haWwuY29tIiwianRpIjoiMDQ3OGY1NTktM2MwYS00NGRlLThlNzUtNmFiNTAxMzcxYmYzIiwiaWF0IjoxNzY3MjM4NTUwLCJleHAiOjE3NjcyNDIxNTB9.-RsCt5-XHLWLYNg7QdSOXHN6GzXg5xATNwowfmAAIAtPLdC3paRscGsDi0vSNz-xR0ZsWFwgkwDDfGM58SeoFg";
 
@@ -42,6 +47,7 @@ export default function ProfileScreen() {
         phone: '0912345678',
         gender: 'other',
         dob: '1998-10-20',
+        avatar: undefined,
     });
 
     useEffect(() => {
@@ -50,18 +56,55 @@ export default function ProfileScreen() {
             setAccount(prev => ({
                 ...prev,
                 email: decoded.sub || '',
-                id: decoded.id || 1 // Backend cần ID này cho PathVariable {id}
+                id: decoded.id || 1
             }));
         } catch (error) {
             console.error("JWT Decode Error:", error);
         }
     }, []);
 
+    const requestPermissions = async () => {
+        if (Platform.OS !== 'web') {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Lỗi', 'Bạn cần cấp quyền truy cập thư viện ảnh để thay đổi avatar.');
+                return false;
+            }
+        }
+        return true;
+    };
+
+    const pickImage = async () => {
+        const hasPermission = await requestPermissions();
+        if (!hasPermission) return;
+
+        try {
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 0.8,
+                base64: true,
+            });
+
+            if (!result.canceled && result.assets[0]) {
+                const base64Image = result.assets[0].base64;
+                if (base64Image) {
+                    const base64WithPrefix = `data:image/jpeg;base64,${base64Image}`;
+                    setAccount({ ...account, avatar: base64WithPrefix });
+                    setShowAvatarModal(false);
+                }
+            }
+        } catch (error) {
+            Alert.alert('Lỗi', 'Không thể chọn ảnh. Vui lòng thử lại.');
+            console.error('Image picker error:', error);
+        }
+    };
+
     const handleSave = async () => {
         if (!account.id) return;
         setIsSaving(true);
 
-        // Lấy URL từ file .env
         const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
         const API_URL = `${BASE_URL}/api/v1/accounts/${account.id}`;
 
@@ -71,7 +114,8 @@ export default function ProfileScreen() {
                 phone: account.phone,
                 gender: account.gender,
                 dob: account.dob,
-                status: "active"
+                status: "active",
+                avatar: account.avatar
             };
 
             const response = await fetch(API_URL, {
@@ -105,9 +149,17 @@ export default function ProfileScreen() {
 
     return (
         <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-            {/* Header section */}
             <View style={styles.header}>
-                <Ionicons name="person-circle" size={100} color="#f97316" />
+                <TouchableOpacity onPress={() => setShowAvatarModal(true)} style={styles.avatarContainer}>
+                    {account.avatar ? (
+                        <Image source={{ uri: account.avatar }} style={styles.avatar} />
+                    ) : (
+                        <Ionicons name="person-circle" size={100} color="#f97316" />
+                    )}
+                    <View style={styles.avatarEditBadge}>
+                        <Ionicons name="camera" size={18} color="#fff" />
+                    </View>
+                </TouchableOpacity>
                 <Text style={styles.emailText}>{account.email || 'Loading...'}</Text>
 
                 <TouchableOpacity
@@ -188,6 +240,37 @@ export default function ProfileScreen() {
                     <Text style={[styles.menuText, { color: '#EF4444' }]}>Đăng xuất</Text>
                 </TouchableOpacity>
             </View>
+
+            <Modal
+                visible={showAvatarModal}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setShowAvatarModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Thay đổi ảnh đại diện</Text>
+                        <Text style={styles.modalSubtitle}>Bạn có muốn chọn ảnh mới?</Text>
+
+                        <View style={styles.modalButtons}>
+                            <TouchableOpacity
+                                style={[styles.modalButton, styles.modalButtonPrimary]}
+                                onPress={pickImage}
+                            >
+                                <Ionicons name="images-outline" size={20} color="#fff" />
+                                <Text style={styles.modalButtonText}>Chọn ảnh</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[styles.modalButton, styles.modalButtonSecondary]}
+                                onPress={() => setShowAvatarModal(false)}
+                            >
+                                <Text style={[styles.modalButtonText, { color: '#6B7280' }]}>Hủy</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </ScrollView>
     );
 }
@@ -195,6 +278,9 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F9FAFB' },
     header: { alignItems: 'center', paddingVertical: 45, backgroundColor: '#fff', borderBottomLeftRadius: 30, borderBottomRightRadius: 30, elevation: 3 },
+    avatarContainer: { position: 'relative', marginBottom: 15 },
+    avatar: { width: 100, height: 100, borderRadius: 50, borderWidth: 3, borderColor: '#f97316' },
+    avatarEditBadge: { position: 'absolute', bottom: 0, right: 0, backgroundColor: '#f97316', width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#fff' },
     emailText: { fontSize: 18, fontWeight: 'bold', color: '#1F2937', marginTop: 10 },
     editOption: { flexDirection: 'row', alignItems: 'center', marginTop: 20, paddingHorizontal: 15, paddingVertical: 10, borderRadius: 25, backgroundColor: '#FFF7ED', borderWidth: 1, borderColor: '#FFEDD5' },
     editingBtn: { backgroundColor: '#f97316', borderColor: '#f97316' },
@@ -208,5 +294,14 @@ const styles = StyleSheet.create({
     actionSection: { backgroundColor: '#fff', marginTop: 15, paddingHorizontal: 25, marginHorizontal: 15, borderRadius: 20, marginBottom: 30, elevation: 1 },
     menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 18, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
     menuIconBox: { width: 38, height: 38, borderRadius: 10, backgroundColor: '#FFF7ED', justifyContent: 'center', alignItems: 'center' },
-    menuText: { flex: 1, marginLeft: 15, fontSize: 15, color: '#374151', fontWeight: '500' }
+    menuText: { flex: 1, marginLeft: 15, fontSize: 15, color: '#374151', fontWeight: '500' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+    modalContent: { backgroundColor: '#fff', borderRadius: 20, padding: 25, width: '85%', maxWidth: 400, elevation: 5 },
+    modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#1F2937', textAlign: 'center', marginBottom: 8 },
+    modalSubtitle: { fontSize: 14, color: '#6B7280', textAlign: 'center', marginBottom: 25 },
+    modalButtons: { gap: 12 },
+    modalButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderRadius: 12, gap: 8 },
+    modalButtonPrimary: { backgroundColor: '#f97316' },
+    modalButtonSecondary: { backgroundColor: '#F3F4F6' },
+    modalButtonText: { fontSize: 16, fontWeight: '600', color: '#fff' }
 });
