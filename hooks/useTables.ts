@@ -1,9 +1,10 @@
+// hooks\useTables.tsx
 import { getTables } from '@/api/tableApi';
-import { Table } from '@/models/Table';
+import { DiningTable } from '@/props/DiningTable';
 import { useEffect, useState } from 'react';
 
 export const useTables = () => {
-  const [tables, setTables] = useState<Table[]>([]);
+  const [tables, setTables] = useState<DiningTable[]>([]);
   const [areas, setAreas] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -27,5 +28,5 @@ export const useTables = () => {
     }
   };
 
-  return { tables, areas, loading, reload: loadTables };
+  return { tables, setTables, areas, loading, reload: loadTables };
 };
