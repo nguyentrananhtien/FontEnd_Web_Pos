@@ -1,4 +1,4 @@
-import { BookingFormModalProps } from "@/props/BookingFormModal";
+import { BookingFormModalProps } from "@/services/types";
 import { Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 export default function BookingFormModal({

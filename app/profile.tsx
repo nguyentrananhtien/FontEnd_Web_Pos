@@ -12,10 +12,11 @@ import {
     Modal,
     Platform
 } from 'react-native';
-import { jwtDecode, JwtPayload } from 'jwt-decode';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import { useAuth } from '@/providers/auth-provider';
+import api from '@/services/api';
 
 interface AccountData {
     id: number | null;
@@ -27,40 +28,41 @@ interface AccountData {
     avatar?: string;
 }
 
-interface MyTokenPayload extends JwtPayload {
-    sub: string;
-    id?: number;
-}
-
 export default function ProfileScreen() {
     const router = useRouter();
+    const { user, refreshUserData, isLoading: authLoading } = useAuth();
     const [isEditing, setIsEditing] = useState<boolean>(false);
     const [isSaving, setIsSaving] = useState<boolean>(false);
     const [showAvatarModal, setShowAvatarModal] = useState<boolean>(false);
 
-    const ACCESSTOKEN = "eyJhbGciOiJIUzUxMiJ9.eyJyb2xlcyI6WyJ2aWV3X2Rhc2hib2FyZCIsInZpZXdfb3JkZXJzIiwiY3VzdG9tZXIiXSwic3ViIjoibGV2dWh1bmc2NzhAZ21haWwuY29tIiwianRpIjoiMDQ3OGY1NTktM2MwYS00NGRlLThlNzUtNmFiNTAxMzcxYmYzIiwiaWF0IjoxNzY3MjM4NTUwLCJleHAiOjE3NjcyNDIxNTB9.-RsCt5-XHLWLYNg7QdSOXHN6GzXg5xATNwowfmAAIAtPLdC3paRscGsDi0vSNz-xR0ZsWFwgkwDDfGM58SeoFg";
-
     const [account, setAccount] = useState<AccountData>({
         id: null,
         email: '',
-        fullName: 'Lê Văn Hùng',
-        phone: '0912345678',
+        fullName: '',
+        phone: '',
         gender: 'other',
-        dob: '1998-10-20',
+        dob: '',
         avatar: undefined,
     });
 
+    // Load user info from auth provider
     useEffect(() => {
-        try {
-            const decoded = jwtDecode<MyTokenPayload>(ACCESSTOKEN);
-            setAccount(prev => ({
-                ...prev,
-                email: decoded.sub || '',
-                id: decoded.id || 1
-            }));
-        } catch (error) {
-            console.error("JWT Decode Error:", error);
+        if (user) {
+            setAccount({
+                id: user.id || null,
+                email: user.email || '',
+                fullName: user.fullName || user.name || '',
+                phone: user.phone || '',
+                gender: (user.gender as 'male' | 'female' | 'other') || 'other',
+                dob: user.dob || '',
+                avatar: user.avatar ,
+            });
         }
+    }, [user]);
+
+    // Refresh user data on mount
+    useEffect(() => {
+        refreshUserData();
     }, []);
 
     const requestPermissions = async () => {
@@ -105,9 +107,6 @@ export default function ProfileScreen() {
         if (!account.id) return;
         setIsSaving(true);
 
-        const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
-        const API_URL = `${BASE_URL}/api/v1/accounts/${account.id}`;
-
         try {
             const updateDto = {
                 fullName: account.fullName,
@@ -118,23 +117,23 @@ export default function ProfileScreen() {
                 avatar: account.avatar
             };
 
-            const response = await fetch(API_URL, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${ACCESSTOKEN}`
-                },
-                body: JSON.stringify(updateDto)
-            });
+            // Use api.instance để tự động include token
+            const response = await api.instance.put(
+                `/api/v1/accounts/${account.id}`,
+                updateDto
+            );
 
-            if (response.ok) {
-                setIsEditing(false);
-                Alert.alert("Thành công", "Đã cập nhật thông tin.");
-            } else {
-                Alert.alert("Lỗi", "Không thể lưu dữ liệu.");
-            }
-        } catch (error) {
-            Alert.alert("Lỗi kết nối", "Vui lòng kiểm tra cấu hình mạng trong file .env");
+            setIsEditing(false);
+            Alert.alert("Thành công", "Đã cập nhật thông tin.");
+
+            // Refresh user data to update UI
+            await refreshUserData();
+        } catch (error: any) {
+            console.error('Update profile error:', error);
+            Alert.alert(
+                "Lỗi",
+                error.response?.data?.message || "Không thể cập nhật thông tin. Vui lòng thử lại."
+            );
         } finally {
             setIsSaving(false);
         }
@@ -142,10 +141,20 @@ export default function ProfileScreen() {
 
     const handleChangePassword = () => {
         router.push({
-            pathname: '/forgot-password' as any,
+            pathname: '/auth/forgot-password' as any,
             params: { email: account.email }
         });
     };
+
+    // Show loading when auth is loading or no user yet
+    if (authLoading || !user) {
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <ActivityIndicator size="large" color="#f97316" />
+                <Text style={{ marginTop: 10, color: '#666' }}>Đang tải thông tin...</Text>
+            </View>
+        );
+    }
 
     return (
         <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -216,13 +225,19 @@ export default function ProfileScreen() {
                 </View>
             </View>
 
-            {/* Các chức năng bổ trợ đã khôi phục */}
+            {/* Các chức năng bổ trợ */}
             <View style={styles.actionSection}>
                 <Text style={styles.sectionTitle}>Tài khoản & Hoạt động</Text>
 
-                <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/history' as any)}>
+                <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/(tabs)/orders')}>
                     <View style={styles.menuIconBox}><Ionicons name="receipt" size={20} color="#f97316" /></View>
-                    <Text style={styles.menuText}>Lịch sử mua hàng</Text>
+                    <Text style={styles.menuText}>Đơn hàng của tôi</Text>
+                    <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/invoices')}>
+                    <View style={styles.menuIconBox}><Ionicons name="document-text" size={20} color="#f97316" /></View>
+                    <Text style={styles.menuText}>Hóa đơn</Text>
                     <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
                 </TouchableOpacity>
 
@@ -234,7 +249,7 @@ export default function ProfileScreen() {
 
                 <TouchableOpacity
                     style={[styles.menuItem, { borderBottomWidth: 0 }]}
-                    onPress={() => router.replace('/login' as any)}
+                    onPress={() => router.replace('/auth/login')}
                 >
                     <View style={[styles.menuIconBox, { backgroundColor: '#FEE2E2' }]}><Ionicons name="log-out" size={20} color="#EF4444" /></View>
                     <Text style={[styles.menuText, { color: '#EF4444' }]}>Đăng xuất</Text>

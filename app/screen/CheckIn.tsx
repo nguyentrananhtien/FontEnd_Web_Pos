@@ -18,10 +18,10 @@ export default function CheckIn() {
     if (scanned) return;
     setScanned(true);
 
-    // QR code giờ chỉ chứa tableCode (string)
+    // QR code chứa tableCode (string)
     router.replace({
-      pathname: '/(tabs)/Food',
-      params: { tableCode: data }, // 👈 Gửi trực tiếp tableCode
+      pathname: '/screen/Food',
+      params: { tableCode: data },
     });
   };
 

@@ -9,8 +9,11 @@ import type {
   RegisterRequest,
   LoginRequest,
   AuthResponse,
+  TableDTO,
+  GlobalSearchResponseDTO, UserDTO,
 } from './types';
-
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { STORAGE_KEYS } from "@/constants/STORAGE_KEYS";
 // ============================================
 // AXIOS INSTANCE SETUP
 // ============================================
@@ -24,12 +27,24 @@ const axiosInstance: AxiosInstance = axios.create({
   headers: API_CONFIG.HEADERS,
 });
 
-// Request interceptor - Log all outgoing requests
+const TOKEN_KEY = STORAGE_KEYS.TOKEN;
+const REFRESH_TOKEN_KEY = STORAGE_KEYS.REFRESH_TOKEN;
+const USER_KEY = STORAGE_KEYS.USER;
+
+// Request interceptor - Auto attach token and log requests
 axiosInstance.interceptors.request.use(
-  (config) => {
+  async (config) => {
+    // Automatically load and attach token from AsyncStorage
+    const token = await AsyncStorage.getItem(TOKEN_KEY);
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
     console.log(`🚀 [API] ${config.method?.toUpperCase()} ${config.url}`);
     if (config.params) console.log('   Params:', config.params);
     if (config.data) console.log('   Data:', config.data);
+    if (token) console.log('   🔑 Token:', token.substring(0, 20) + '...');
+
     return config;
   },
   (error) => {
@@ -38,13 +53,34 @@ axiosInstance.interceptors.request.use(
   }
 );
 
-// Response interceptor - Log responses and handle errors
+// Flag to prevent multiple simultaneous refresh requests
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (value?: any) => void;
+  reject: (reason?: any) => void;
+}> = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+
+  failedQueue = [];
+};
+
+// Response interceptor - Handle errors and auto-refresh token on 401
 axiosInstance.interceptors.response.use(
   (response: AxiosResponse) => {
     console.log(`✅ [API] ${response.status} - ${response.config.url}`);
     return response;
   },
-  (error: AxiosError) => {
+  async (error: AxiosError) => {
+    const originalRequest = error.config as any;
+
     const errorDetails = {
       url: error.config?.url,
       method: error.config?.method?.toUpperCase(),
@@ -55,19 +91,141 @@ axiosInstance.interceptors.response.use(
 
     console.error('❌ [API] Response Error:', errorDetails);
 
-    // Handle specific error types
-    if (error.code === 'ECONNABORTED') {
-      console.error('⏱️ [API] Request timeout');
-    } else if (!error.response) {
-      console.error('🔌 [API] Network error - Backend server might be offline');
-    } else if (error.response.status >= 500) {
-      console.error('🔥 [API] Server error');
-    } else if (error.response.status === 404) {
-      console.error('🔍 [API] Resource not found');
-    } else if (error.response.status === 401) {
-      console.error('🔐 [API] Unauthorized');
-    } else if (error.response.status === 403) {
-      console.error('🚫 [API] Forbidden');
+    // Handle specific error types BEFORE 401 handling
+
+    // 502 Bad Gateway - Backend might be down or ngrok issue
+    if (error.response?.status === 502) {
+      console.error('🔥 [API] 502 Bad Gateway - Possible causes:');
+      console.error('   1. Backend server is not running');
+      console.error('   2. Ngrok tunnel is down');
+      console.error('   3. Wrong backend URL in .env');
+      console.error(`   Current URL: ${API_CONFIG.BASE_URL}`);
+
+      // Don't retry on 502
+      return Promise.reject({
+        ...error,
+        message: '🔥 Backend không phản hồi. Kiểm tra: 1) Backend đang chạy? 2) Ngrok đang hoạt động? 3) URL trong .env đúng?',
+        userMessage: 'Không thể kết nối đến máy chủ. Vui lòng thử lại sau.',
+      });
+    }
+
+    // 503 Service Unavailable
+    if (error.response?.status === 503) {
+      console.error('⚠️ [API] 503 Service Unavailable - Backend đang bảo trì');
+      return Promise.reject({
+        ...error,
+        message: 'Máy chủ đang bảo trì',
+        userMessage: 'Hệ thống đang bảo trì. Vui lòng thử lại sau.',
+      });
+    }
+
+    // Network errors (no response)
+    if (!error.response) {
+      if (error.code === 'ECONNABORTED') {
+        console.error('⏱️ [API] Request timeout');
+        return Promise.reject({
+          ...error,
+          message: 'Request timeout - Mạng chậm hoặc backend không phản hồi',
+          userMessage: 'Yêu cầu quá lâu. Vui lòng kiểm tra kết nối mạng.',
+        });
+      }
+
+      console.error('🔌 [API] Network error - Possible causes:');
+      console.error('   1. No internet connection');
+      console.error('   2. Backend server offline');
+      console.error('   3. Firewall blocking request');
+      console.error('   4. Wrong ngrok URL');
+      console.error(`   Current URL: ${API_CONFIG.BASE_URL}`);
+
+      return Promise.reject({
+        ...error,
+        message: '🔌 Không có kết nối mạng hoặc backend offline',
+        userMessage: 'Không thể kết nối. Kiểm tra kết nối mạng.',
+      });
+    }
+
+    // Handle 401 Unauthorized - Try to refresh token
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        // If already refreshing, queue this request
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        }).then(token => {
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+          return axiosInstance(originalRequest);
+        }).catch(err => {
+          return Promise.reject(err);
+        });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        const refreshToken = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
+
+        if (!refreshToken) {
+          console.error('🔐 [API] No refresh token available');
+          processQueue(new Error('No refresh token'), null);
+          await AsyncStorage.multiRemove([TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY]);
+          return Promise.reject({
+            ...error,
+            message: 'No refresh token - User needs to login again',
+            userMessage: 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.',
+          });
+        }
+
+        console.log('🔄 [API] Attempting to refresh token...');
+
+        // Call refresh endpoint
+        const response = await axios.post<AuthResponse>(
+          `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.AUTH_REFRESH}`,
+          { refreshToken },
+          { headers: API_CONFIG.HEADERS }
+        );
+
+        const { accessToken, refreshToken: newRefreshToken } = response.data;
+
+        // Save new tokens
+        await AsyncStorage.setItem(TOKEN_KEY, accessToken);
+        await AsyncStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);
+
+        console.log('✅ [API] Token refreshed successfully');
+
+        // Update authorization header
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+
+        // Process queued requests
+        processQueue(null, accessToken);
+
+        // Retry original request
+        return axiosInstance(originalRequest);
+
+      } catch (refreshError) {
+        console.error('❌ [API] Token refresh failed:', refreshError);
+        processQueue(refreshError, null);
+
+        // Clear all auth data
+        await AsyncStorage.multiRemove([TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY]);
+
+        return Promise.reject({
+          message: 'Token refresh failed - User needs to login again',
+          userMessage: 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.',
+        });
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
+    // Handle other HTTP error codes
+    if (error.response) {
+      if (error.response.status === 404) {
+        console.error('🔍 [API] Resource not found');
+      } else if (error.response.status === 403) {
+        console.error('🚫 [API] Forbidden - Insufficient permissions');
+      } else if (error.response.status >= 500) {
+        console.error('🔥 [API] Server error');
+      }
     }
 
     return Promise.reject(error);
@@ -114,8 +272,13 @@ export const authApi = {
       API_CONFIG.ENDPOINTS.AUTH_REGISTER,
       data
     );
-    if (response.data.token) {
-      axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+    // Save tokens to AsyncStorage
+    if (response.data.accessToken) {
+      await AsyncStorage.setItem(TOKEN_KEY, response.data.accessToken);
+      await AsyncStorage.setItem(REFRESH_TOKEN_KEY, response.data.refreshToken);
+    }
+    if (response.data.user) {
+      await AsyncStorage.setItem(USER_KEY, JSON.stringify(response.data.user));
     }
     return response.data;
   },
@@ -125,42 +288,124 @@ export const authApi = {
       API_CONFIG.ENDPOINTS.AUTH_LOGIN,
       data
     );
-    if (response.data.token) {
-      axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+    console.log('✅ Login response:', response.data);
+
+    // Save tokens to AsyncStorage
+    if (response.data.accessToken) {
+      await AsyncStorage.setItem(TOKEN_KEY, response.data.accessToken);
+      await AsyncStorage.setItem(REFRESH_TOKEN_KEY, response.data.refreshToken);
+      console.log('✅ Token saved to AsyncStorage');
+    }
+    if (response.data.user) {
+      await AsyncStorage.setItem(USER_KEY, JSON.stringify(response.data.user));
+      console.log('✅ User data saved to AsyncStorage');
     }
     return response.data;
   },
 
   logout: async (): Promise<void> => {
-    await axiosInstance.delete(API_CONFIG.ENDPOINTS.AUTH_LOGOUT);
-    delete axiosInstance.defaults.headers.common['Authorization'];
+    try {
+      await axiosInstance.delete(API_CONFIG.ENDPOINTS.AUTH_LOGOUT);
+    } catch (error) {
+      console.error('Logout API error:', error);
+    } finally {
+      // Always clear local storage
+      await AsyncStorage.multiRemove([TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY]);
+    }
   },
 
   logoutAll: async (): Promise<void> => {
-    await axiosInstance.delete(API_CONFIG.ENDPOINTS.AUTH_LOGOUT_ALL);
-    delete axiosInstance.defaults.headers.common['Authorization'];
+    try {
+      await axiosInstance.delete(API_CONFIG.ENDPOINTS.AUTH_LOGOUT_ALL);
+    } catch (error) {
+      console.error('Logout all API error:', error);
+    } finally {
+      // Always clear local storage
+      await AsyncStorage.multiRemove([TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY]);
+    }
   },
 
-  setToken: (token: string): void => {
-    axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  setToken: async (token: string): Promise<void> => {
+    await AsyncStorage.setItem(TOKEN_KEY, token);
   },
 
-  clearToken: (): void => {
-    delete axiosInstance.defaults.headers.common['Authorization'];
+  clearToken: async (): Promise<void> => {
+    await AsyncStorage.removeItem(TOKEN_KEY);
+  },
+
+  getToken: async (): Promise<string | null> => {
+    return await AsyncStorage.getItem(TOKEN_KEY);
+  },
+
+  getUser: async (): Promise<UserDTO | null> => {
+    const userData = await AsyncStorage.getItem(USER_KEY);
+    return userData ? JSON.parse(userData) : null;
+  },
+
+  /**
+   * Refresh access token using refresh token
+   */
+  refreshToken: async (): Promise<AuthResponse> => {
+    const refreshToken = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
+
+    if (!refreshToken) {
+      throw new Error('No refresh token available');
+    }
+
+    const response = await axios.post<AuthResponse>(
+      `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.AUTH_REFRESH}`,
+      { refreshToken },
+      { headers: API_CONFIG.HEADERS }
+    );
+
+    // Save new tokens
+    if (response.data.accessToken) {
+      await AsyncStorage.setItem(TOKEN_KEY, response.data.accessToken);
+      await AsyncStorage.setItem(REFRESH_TOKEN_KEY, response.data.refreshToken);
+    }
+
+    return response.data;
+  },
+
+  /**
+   * Get current user info (from JWT/Redis)
+   */
+  getCurrentUser: async (): Promise<UserDTO> => {
+    const response = await axiosInstance.get<UserDTO>(
+      API_CONFIG.ENDPOINTS.AUTH_CURRENT_USER
+    );
+
+    // Update user data in AsyncStorage
+    if (response.data) {
+      await AsyncStorage.setItem(USER_KEY, JSON.stringify(response.data));
+    }
+
+    return response.data;
   },
 };
 
 // ============================================
-// HEALTH CHECK API
+// USER API
 // ============================================
 
-export const healthApi = {
+export const userApi = {
   /**
-   * Check API health status
+   * Get user by ID
    */
-  check: async (): Promise<{ status: string }> => {
-    const response = await retryRequest(() =>
-      axiosInstance.get<{ status: string }>(API_CONFIG.ENDPOINTS.HEALTH)
+  getById: async (id: number): Promise<UserDTO> => {
+    const response = await axiosInstance.get<UserDTO>(
+      API_CONFIG.ENDPOINTS.USER_BY_ID(id)
+    );
+    return response.data;
+  },
+
+  /**
+   * Update user info
+   */
+  update: async (id: number, data: Partial<UserDTO>): Promise<UserDTO> => {
+    const response = await axiosInstance.put<UserDTO>(
+      API_CONFIG.ENDPOINTS.USER_UPDATE(id),
+      data
     );
     return response.data;
   },
@@ -506,19 +751,222 @@ export const cartApi = {
 };
 
 // ============================================
+// SEARCH API
+// ============================================
+
+export const searchApi = {
+  /**
+   * Global search for dishes and tables
+   */
+  search: async (query: string): Promise<GlobalSearchResponseDTO> => {
+    const response = await axiosInstance.get<GlobalSearchResponseDTO>(
+      API_CONFIG.ENDPOINTS.SEARCH,
+      { params: { q: query } }
+    );
+    return response.data;
+  },
+};
+
+// ============================================
+// TABLE API
+// ============================================
+
+export const tableApi = {
+  /**
+   * Get all tables
+   */
+  getAll: async (): Promise<TableDTO[]> => {
+    const response = await axiosInstance.get<TableDTO[]>(
+      API_CONFIG.ENDPOINTS.TABLES
+    );
+    return response.data;
+  },
+
+  /**
+   * Get table by ID
+   */
+  getById: async (id: number): Promise<TableDTO> => {
+    const response = await axiosInstance.get<TableDTO>(
+      API_CONFIG.ENDPOINTS.TABLE_BY_ID(id)
+    );
+    return response.data;
+  },
+
+  /**
+   * Get table availability
+   */
+  getAvailability: async (date: string, slotId: number): Promise<any[]> => {
+    const response = await axiosInstance.get(
+      '/api/tables/availability',
+      { params: { date, slotId } }
+    );
+    return response.data;
+  },
+
+  /**
+   * Book a table
+   */
+  book: async (tableCode: string, bookingData: any): Promise<any> => {
+    const response = await axiosInstance.post(
+      `/api/tables/${tableCode}/book`,
+      bookingData
+    );
+    return response.data;
+  },
+};
+
+// ============================================
+// RESERVATION API
+// ============================================
+
+export interface ReservationDTO {
+  reservationId?: number;
+  userId: number;
+  userName?: string;
+  tableId: number;
+  tableCode?: string;
+  reservationDate: string;
+  timeSlotId: number;
+  timeSlotLabel?: string;
+  numberOfGuests: number;
+  status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export const reservationApi = {
+  /**
+   * Get all reservations (admin)
+   */
+  getAll: async (): Promise<ReservationDTO[]> => {
+    const response = await axiosInstance.get<ReservationDTO[]>('/api/reservations');
+    if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+      return (response.data as any).data;
+    }
+    return response.data;
+  },
+
+  /**
+   * Get reservation by ID
+   */
+  getById: async (id: number): Promise<ReservationDTO> => {
+    const response = await axiosInstance.get<ReservationDTO>(`/api/reservations/${id}`);
+    return response.data;
+  },
+
+  /**
+   * Get reservations by user ID
+   */
+  getByUserId: async (userId: number): Promise<ReservationDTO[]> => {
+    const response = await axiosInstance.get<ReservationDTO[]>(`/api/reservations/user/${userId}`);
+    if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+      return (response.data as any).data;
+    }
+    return response.data;
+  },
+
+  /**
+   * Create a new reservation
+   */
+  create: async (data: Omit<ReservationDTO, 'reservationId' | 'createdAt' | 'updatedAt'>): Promise<ReservationDTO> => {
+    const response = await axiosInstance.post<ReservationDTO>('/api/reservations', data);
+    return response.data;
+  },
+
+  /**
+   * Update reservation
+   */
+  update: async (id: number, data: Partial<ReservationDTO>): Promise<ReservationDTO> => {
+    const response = await axiosInstance.put<ReservationDTO>(`/api/reservations/${id}`, data);
+    return response.data;
+  },
+
+  /**
+   * Delete reservation
+   */
+  delete: async (id: number): Promise<void> => {
+    await axiosInstance.delete(`/api/reservations/${id}`);
+  },
+};
+
+// ============================================
+// TIME SLOT API
+// ============================================
+
+export interface TimeSlotDTO {
+  slotId: number;
+  label: string;
+  startTime?: string;
+  endTime?: string;
+}
+
+export const timeSlotApi = {
+  /**
+   * Get all time slots
+   */
+  getAll: async (): Promise<TimeSlotDTO[]> => {
+    const response = await axiosInstance.get<TimeSlotDTO[]>('/api/timeslots');
+    return response.data;
+  },
+
+  /**
+   * Get time slot by ID
+   */
+  getById: async (id: number): Promise<TimeSlotDTO> => {
+    const response = await axiosInstance.get<TimeSlotDTO>(`/api/timeslots/${id}`);
+    return response.data;
+  },
+};
+
+// ============================================
 // EXPORTS
 // ============================================
 
 // Export axios instance for custom requests
 export const api = axiosInstance;
 
+/**
+ * Payment API
+ */
+export const paymentApi = {
+  /**
+   * Create payment from invoice (VNPay)
+   */
+  createFromInvoice: async (invoiceId: number, userId: number): Promise<{ paymentUrl: string }> => {
+    const response = await axiosInstance.post<{ paymentUrl: string }>(
+      `/api/payment/create-from-invoice/${invoiceId}`,
+      null,
+      {
+        params: { userId }
+      }
+    );
+    return response.data;
+  },
+
+  /**
+   * Get payment status
+   */
+  getStatus: async (orderId: string): Promise<any> => {
+    const response = await axiosInstance.get(
+      `/api/payment/status/${orderId}`
+    );
+    return response.data;
+  }
+};
+
 export default {
   auth: authApi,
-  health: healthApi,
+  user: userApi,
   category: categoryApi,
   dish: dishApi,
   order: orderApi,
   cart: cartApi,
+  search: searchApi,
+  table: tableApi,
+  reservation: reservationApi,
+  timeSlot: timeSlotApi,
+  payment: paymentApi,
   instance: axiosInstance,
 };
 

@@ -11,6 +11,8 @@ interface CartContextType {
   getQuantityInCart: (dishId: number) => number;
   getTotalItems: () => number;
   getTotalAmount: () => number;
+  selectedReservationId: number | null;
+  setReservation: (reservationId: number | null) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);

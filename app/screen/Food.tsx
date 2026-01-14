@@ -10,6 +10,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import {API_CONFIG} from "@/services/config";
 
 const SLOTS = [
   { slotId: 1, start: "06:00", label: "06:00 - 09:00" },
@@ -79,7 +80,7 @@ export default function Food() {
         slotId: selectedSlotId,
       };
 
-      const res = await fetch("http://192.168.1.13:9090/api/tables/check-in", {
+      const res = await fetch(`${API_CONFIG.BASE_URL}/tables/check-in`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -102,12 +103,28 @@ export default function Food() {
   if (checkInSuccess) {
     return (
       <View style={styles.container}>
-        <Text style={{ fontSize: 24, fontWeight: "bold" }}>
-          Chào mừng quý khách!
+        <Text style={{ fontSize: 24, fontWeight: "bold", marginBottom: 20 }}>
+          ✅ Chào mừng quý khách!
         </Text>
-        <Text style={{ marginTop: 20 }}>
-          Check-in thành công. Quý khách có thể gọi món.
+        <Text style={{ marginBottom: 30, textAlign: 'center' }}>
+          Check-in thành công tại bàn {tableCode}. {'\n'}
+          Quý khách có thể gọi món ngay bây giờ.
         </Text>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <Button
+            title="Đặt món ngay"
+            onPress={() => {
+              router.replace({
+                pathname: '/(tabs)/menu',
+                params: { tableCode }
+              });
+            }}
+          />
+          <Button
+            title="Về trang chủ"
+            onPress={() => router.replace('/(tabs)/home')}
+          />
+        </View>
       </View>
     );
   }

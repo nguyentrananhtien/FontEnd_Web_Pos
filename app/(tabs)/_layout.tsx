@@ -1,7 +1,7 @@
-// app/(tabs)/_layout.tsx
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';
+
 export default function TabLayout() {
   return (
     <Tabs
@@ -13,55 +13,72 @@ export default function TabLayout() {
           backgroundColor: "white",
           borderTopWidth: 1,
           borderTopColor: "#f3f4f6",
+          paddingBottom: 8,
+          paddingTop: 8,
+          height: 65,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '600',
         },
       }}>
+      {/* Home Tab */}
       <Tabs.Screen
-        name="DiningTable"
+        name="home"
         options={{
-          title: 'Reservation',
+          title: 'Home',
+          tabBarIcon: ({ color }) => (
+            <MaterialIcons name="home" size={24} color={color} />
+          ),
+        }}
+      />
+
+      {/* Orders Tab */}
+      <Tabs.Screen
+        name="orders"
+        options={{
+          title: "Orders",
+          tabBarIcon: ({ color }) => (
+            <MaterialIcons name="receipt-long" size={24} color={color} />
+          ),
+        }}
+      />
+
+      {/* Dish Tab */}
+      <Tabs.Screen
+        name="menu"
+        options={{
+          title: "Dish",
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="restaurant" size={24} color={color} />
+          ),
+        }}
+      />
+
+      {/* Dining Tab */}
+      <Tabs.Screen
+        name="dining"
+        options={{
+          title: "Dining",
           tabBarIcon: ({ color }) => (
             <MaterialIcons name="table-restaurant" size={24} color={color} />
           ),
         }}
       />
 
-      <Tabs.Screen
-        name="CheckIn" // tên file: CheckIn.tsx
-        options={{
-          title: 'Check In', // <-- tên hiển thị trên tab
-          tabBarIcon: ({ color }) => (
-            <MaterialIcons name="list-alt" size={24} color={color} />
-          ),
-        }}
-      />
-
-      <Tabs.Screen
-        name="menu"
-        options={{
-          title: "Menu",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="restaurant" size={size} color={color} />
-          ),
-        }}
-      />
-
-      <Tabs.Screen
-        name="Food"
-        options={{
-          title: 'Food',
-          tabBarIcon: ({ color }) => (
-            <MaterialIcons name="restaurant-menu" size={24} color={color} />
-          ),
-        }}
-      />
-
+      {/* Hidden screens - accessible via navigation but not shown in tab bar */}
       <Tabs.Screen
         name="cart"
         options={{
+          href: null, // Hide from tab bar
           title: "Cart",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="cart" size={size} color={color} />
-          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="screen"
+        options={{
+          href: null, // Hide from tab bar
         }}
       />
     </Tabs>

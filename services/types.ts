@@ -1,3 +1,5 @@
+import {TABLE_STATUSES} from "@/constants/STATUS_COLOR";
+
 export interface DishDTO {
   id: number;
   categoryId: number;
@@ -91,10 +93,10 @@ export interface LoginRequest {
 }
 
 export interface AuthResponse {
-  user: any;
   token: any;
   accessToken: string;
   refreshToken: string;
+  user: UserDTO;
 }
 
 export interface RoleDTO {
@@ -103,11 +105,10 @@ export interface RoleDTO {
 }
 
 export interface UserDTO {
-    name: string;
-  user: any;
   id: number;
   email: string;
   fullName?: string;
+  name?: string;
   phone?: string;
   gender?: 'male' | 'female' | 'other';
   dob?: string;
@@ -116,6 +117,15 @@ export interface UserDTO {
   createdAt?: string;
   updatedAt?: string;
   roles?: RoleDTO[];
+}
+
+export interface CurrentUserResponse {
+  id: number;
+  email: string;
+  fullName: string;
+  phone?: string;
+  avatar?: string;
+  roles: string[];
 }
 
 export interface VNPayPaymentRequest {
@@ -130,5 +140,112 @@ export interface VNPayPaymentResponse {
   paymentUrl: string;
   amount: number;
   status: string;
+}
+
+export interface TableDTO {
+  id: number;
+  tableCode: string;
+  name: string;
+  seatingCapacity: number;
+  area: string;
+  status: 'EMPTY' | 'OCCUPIED' | 'RESERVED' | 'PENDING';
+  description?: string;
+}
+
+export interface SearchResultDTO {
+  resultType: 'DISH' | 'TABLE';
+  id: number;
+  name: string;
+  code?: string;
+  description?: string;
+  imageUrl?: string;
+  price?: number;
+  status: string;
+  seatingCapacity?: number;
+  area?: string;
+  matchedFields: string[];
+}
+
+export interface GlobalSearchResponseDTO {
+  query: string;
+  totalResults: number;
+  dishCount: number;
+  tableCount: number;
+  results: SearchResultDTO[];
+}
+
+// Booking and Table related types (moved from props/)
+export interface BookingRequest {
+  name: string;
+  email: string;
+  phone: string;
+  totalGuests: number;
+  date: string;
+  slotId: number;
+}
+
+export interface BookingFormModalProps {
+  visible: boolean;
+  onClose: () => void;
+  tableCode: string | null;
+  formData: {
+    name: string;
+    email: string;
+    phone: string;
+    totalGuests: string;
+  };
+  onFormChange: (field: string, value: string | number) => void;
+  onConfirm: () => void;
+  loading?: boolean;
+}
+
+export interface TimeSlotItem {
+  slotId: number;
+  label: string;
+}
+
+export interface TimeSlot {
+  visible: boolean;
+  loading: boolean;
+  timeSlots: TimeSlotItem[];
+  onClose: () => void;
+  onSelect: (slot: TimeSlotItem) => void;
+}
+
+export interface DiningTableProps {
+  tableId: string;
+  tableCode: string;
+  seatingCapacity: number;
+  status: 'EMPTY' | 'OCCUPIED';
+  area: string;
+}
+
+export interface TableListProps {
+  visible: boolean;
+  onClose: () => void;
+  search: string;
+  onSearch: (v: string) => void;
+  areas: string[];
+  selectedArea: string;
+  onSelectArea: (a: string) => void;
+  tables: any[];
+  tableLoading: boolean;
+  onTableSelect: (tableCode: string) => void;
+}
+
+export interface TableCardProps {
+  id: string;
+  pax: number;
+  status: TABLE_STATUSES;
+  disabled?: boolean;
+  onPress?: () => void;
+}
+
+export interface TableAvailableResponse {
+  tableId: string;
+  tableCode: string;
+  seatingCapacity: number;
+  area: string;
+  available: boolean;
 }
 

@@ -1,10 +1,10 @@
 // hooks\useTables.tsx
 import { getTables } from '@/api/tableApi';
-import { DiningTable } from '@/props/DiningTable';
+import { DiningTableProps } from '@/services/types';
 import { useEffect, useState } from 'react';
 
 export const useTables = () => {
-  const [tables, setTables] = useState<DiningTable[]>([]);
+  const [tables, setTables] = useState<DiningTableProps[]>([]);
   const [areas, setAreas] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 

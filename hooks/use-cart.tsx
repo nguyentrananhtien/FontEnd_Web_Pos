@@ -11,6 +11,7 @@ export interface CartItem {
 
 export const useCartState = () => {
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [selectedReservationId, setSelectedReservationId] = useState<number | null>(null);
 
   const addToCart = (dish: DishDTO) => {
     const existingItem = cart.find(item => item.dishId === dish.id);
@@ -60,6 +61,7 @@ export const useCartState = () => {
 
   const clearCart = () => {
     setCart([]);
+    setSelectedReservationId(null);
   };
 
   const getQuantityInCart = (dishId: number): number => {
@@ -75,6 +77,10 @@ export const useCartState = () => {
     return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
   };
 
+  const setReservation = (reservationId: number | null) => {
+    setSelectedReservationId(reservationId);
+  };
+
   return {
     cart,
     addToCart,
@@ -83,6 +89,8 @@ export const useCartState = () => {
     clearCart,
     getQuantityInCart,
     getTotalItems,
-    getTotalAmount
+    getTotalAmount,
+    selectedReservationId,
+    setReservation,
   };
 };

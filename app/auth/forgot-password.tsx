@@ -20,7 +20,7 @@ export default function ForgotPasswordScreen() {
 
             Alert.alert('Thành công', 'Mã xác thực đã được gửi đến hòm thư của bạn');
             router.push({
-                pathname: '/reset-password',
+                pathname: '/auth/reset-password',
                 params: {email: email}
             });
         } catch (error: any) {

@@ -1,5 +1,5 @@
 export const API_CONFIG = {
-    BASE_URL: 'https://jasmine-unphlegmatical-cognately.ngrok-free.dev',
+    BASE_URL: process.env.EXPO_PUBLIC_BACKEND_URL,
     TIMEOUT: 15000,
     RETRY_ATTEMPTS: 3,
     RETRY_DELAY: 1000,
@@ -11,7 +11,7 @@ export const API_CONFIG = {
     },
 
     ENDPOINTS: {
-        HEALTH: '/api/health',
+        // Auth endpoints
         AUTH_REGISTER: '/api/v1/auth/register',
         AUTH_LOGIN: '/api/v1/auth/login',
         AUTH_LOGOUT: '/api/v1/auth/logout',
@@ -19,6 +19,14 @@ export const API_CONFIG = {
         AUTH_REFRESH: '/api/v1/auth/refresh',
         AUTH_FORGOT_PASSWORD: '/api/v1/auth/forgot-password',
         AUTH_RESET_PASSWORD: '/api/v1/auth/reset-password',
+        AUTH_CURRENT_USER: '/api/v1/auth/me',
+
+        // User endpoints
+        USERS: '/api/v1/users',
+        USER_BY_ID: (id: number) => `/api/v1/users/${id}`,
+        USER_UPDATE: (id: number) => `/api/v1/users/${id}`,
+
+        // Categories
         CATEGORIES: '/api/categories',
         CATEGORIES_ACTIVE: '/api/categories/active',
         CATEGORIES_SEARCH: '/api/categories/search',
@@ -49,5 +57,8 @@ export const API_CONFIG = {
         CART_ITEMS: (sessionId: string) => `/api/cart/${sessionId}/items`,
         CART_ITEM: (sessionId: string, itemId: number) => `/api/cart/${sessionId}/items/${itemId}`,
         CART_CLEAR: (sessionId: string) => `/api/cart/${sessionId}/clear`,
+        SEARCH: '/api/search',
+        TABLES: '/api/tables',
+        TABLE_BY_ID: (id: number) => `/api/tables/${id}`,
     }
 };

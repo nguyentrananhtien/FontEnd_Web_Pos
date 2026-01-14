@@ -91,7 +91,7 @@ export default function PhoneLoginScreen() {
             if (response?.data?.accessToken) {
                 await authApi.saveAuthData(response.data);
                 Alert.alert('Thành công', 'Đăng nhập POS thành công');
-                router.replace('/home');
+                router.replace('/(tabs)/home');
             }
         } catch (err) {
             Alert.alert('Lỗi', 'Mã OTP không chính xác hoặc đã hết hạn');

@@ -1,7 +1,5 @@
 import { bookingTable, getTables, getTablesAvailale, getTimeSlots } from "@/api/tableApi";
-import { BookingRequest } from "@/props/BookingRequest";
-import { DiningTable } from "@/props/DiningTable";
-import { TimeSlotItem } from "@/props/TimeSlotProps";
+import { BookingRequest, DiningTableProps, TimeSlotItem } from "@/services/types";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMemo, useState } from "react";
 import { Alert } from "react-native";
@@ -51,9 +49,10 @@ export const useBookingTables = () => {
       const date = selectedDate.toISOString().split("T")[0];
       const res = await getTablesAvailale(date, slotId);
 
-      const mappedTables: DiningTable[] = res.data.map((t) => ({
+      const mappedTables: DiningTableProps[] = res.data.map((t) => ({
         tableId: t.tableId,
         tableCode: t.tableCode,
+        name: t.tableCode,
         seatingCapacity: t.seatingCapacity,
         area: t.area,
         status: t.available ? 'EMPTY' : 'OCCUPIED',
