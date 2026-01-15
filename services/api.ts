@@ -931,21 +931,66 @@ export const api = axiosInstance;
  */
 export const paymentApi = {
   /**
-   * Create payment from invoice (VNPay)
+   * Create payment
    */
-  createFromInvoice: async (invoiceId: number, userId: number): Promise<{ paymentUrl: string }> => {
-    const response = await axiosInstance.post<{ paymentUrl: string }>(
-      `/api/payment/create-from-invoice/${invoiceId}`,
-      null,
-      {
-        params: { userId }
-      }
+  create: async (data: {
+    amount: number;
+    orderId: number;
+    userId: number;
+    orderInfo: string;
+    returnUrl: string;
+  }): Promise<{ paymentUrl: string; txnRef: string }> => {
+    const response = await axiosInstance.post(
+      API_CONFIG.ENDPOINTS.PAYMENT_CREATE,
+      data
     );
     return response.data;
   },
 
   /**
-   * Get payment status
+   * Create payment from invoice (VNPay)
+   */
+  createFromInvoice: async (invoiceId: number, userId?: number): Promise<{ paymentUrl: string; txnRef: string }> => {
+    const response = await axiosInstance.post(
+      API_CONFIG.ENDPOINTS.PAYMENT_CREATE_FROM_INVOICE(invoiceId),
+      null,
+      userId ? { params: { userId } } : undefined
+    );
+    return response.data;
+  },
+
+  /**
+   * Get payment by transaction reference
+   */
+  getByTxnRef: async (txnRef: string): Promise<any> => {
+    const response = await axiosInstance.get(
+      API_CONFIG.ENDPOINTS.PAYMENT_BY_TXN(txnRef)
+    );
+    return response.data;
+  },
+
+  /**
+   * Get payments by order ID
+   */
+  getByOrderId: async (orderId: number): Promise<any[]> => {
+    const response = await axiosInstance.get(
+      API_CONFIG.ENDPOINTS.PAYMENT_BY_ORDER(orderId)
+    );
+    return response.data;
+  },
+
+  /**
+   * Get payments by user ID
+   */
+  getByUserId: async (userId: number): Promise<any[]> => {
+    const response = await axiosInstance.get(
+      API_CONFIG.ENDPOINTS.PAYMENT_BY_USER(userId)
+    );
+    return response.data;
+  },
+
+  /**
+   * Get payment status (legacy)
    */
   getStatus: async (orderId: string): Promise<any> => {
     const response = await axiosInstance.get(
@@ -953,6 +998,423 @@ export const paymentApi = {
     );
     return response.data;
   }
+};
+
+/**
+ * Invoice API
+ */
+export interface InvoiceDTO {
+  invoiceId?: number;
+  orderId: number;
+  userId: number;
+  userName?: string;
+  subtotal?: number;
+  discount?: number;
+  tax?: number;
+  finalAmount?: number;
+  status?: 'PENDING' | 'PAID' | 'CANCELLED' | 'REFUNDED';
+  createdAt?: string;
+  updatedAt?: string;
+  items?: any[];
+}
+
+export const invoiceApi = {
+  /**
+   * Get all invoices (admin)
+   */
+  getAll: async (): Promise<InvoiceDTO[]> => {
+    const response = await axiosInstance.get(API_CONFIG.ENDPOINTS.INVOICES);
+    return response.data;
+  },
+
+  /**
+   * Get invoice by ID
+   */
+  getById: async (id: number): Promise<InvoiceDTO> => {
+    const response = await axiosInstance.get(
+      API_CONFIG.ENDPOINTS.INVOICE_BY_ID(id)
+    );
+    return response.data;
+  },
+
+  /**
+   * Create invoice from order
+   */
+  createFromOrder: async (orderId: number, discount?: number): Promise<InvoiceDTO> => {
+    const response = await axiosInstance.post(
+      API_CONFIG.ENDPOINTS.INVOICE_FROM_ORDER(orderId),
+      null,
+      discount !== undefined ? { params: { discount } } : undefined
+    );
+    return response.data;
+  },
+
+  /**
+   * Create invoice manually
+   */
+  create: async (data: Omit<InvoiceDTO, 'invoiceId' | 'createdAt' | 'updatedAt'>): Promise<InvoiceDTO> => {
+    const response = await axiosInstance.post(
+      API_CONFIG.ENDPOINTS.INVOICE_CREATE,
+      data
+    );
+    return response.data;
+  },
+
+  /**
+   * Get invoice by order ID
+   */
+  getByOrderId: async (orderId: number): Promise<InvoiceDTO> => {
+    const response = await axiosInstance.get(
+      API_CONFIG.ENDPOINTS.INVOICE_BY_ORDER(orderId)
+    );
+    return response.data;
+  },
+
+  /**
+   * Get invoices by user ID
+   */
+  getByUserId: async (userId: number): Promise<InvoiceDTO[]> => {
+    const response = await axiosInstance.get(
+      API_CONFIG.ENDPOINTS.INVOICE_BY_USER(userId)
+    );
+    return response.data;
+  },
+
+  /**
+   * Update invoice
+   */
+  update: async (id: number, data: Partial<InvoiceDTO>): Promise<InvoiceDTO> => {
+    const response = await axiosInstance.put(
+      API_CONFIG.ENDPOINTS.INVOICE_UPDATE(id),
+      data
+    );
+    return response.data;
+  },
+
+  /**
+   * Update invoice status
+   */
+  updateStatus: async (id: number, status: 'PENDING' | 'PAID' | 'CANCELLED' | 'REFUNDED'): Promise<InvoiceDTO> => {
+    const response = await axiosInstance.patch(
+      API_CONFIG.ENDPOINTS.INVOICE_UPDATE_STATUS(id),
+      null,
+      { params: { status } }
+    );
+    return response.data;
+  },
+
+  /**
+   * Get invoice final amount
+   */
+  getFinalAmount: async (id: number): Promise<number> => {
+    const response = await axiosInstance.get(
+      API_CONFIG.ENDPOINTS.INVOICE_FINAL_AMOUNT(id)
+    );
+    return response.data;
+  },
+
+  /**
+   * Delete invoice
+   */
+  delete: async (id: number): Promise<void> => {
+    await axiosInstance.delete(API_CONFIG.ENDPOINTS.INVOICE_DELETE(id));
+  },
+};
+
+/**
+ * Notification API
+ */
+export interface NotificationDTO {
+  notificationId?: number;
+  title: string;
+  message: string;
+  type: 'PROMOTION' | 'ORDER_UPDATE' | 'RESERVATION' | 'SYSTEM';
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+  createdAt?: string;
+}
+
+export interface UserNotificationDTO {
+  userNotificationId: number;
+  userId: number;
+  notificationId: number;
+  isRead: boolean;
+  sentAt: string;
+  readAt?: string;
+  notification: NotificationDTO;
+}
+
+export const notificationApi = {
+  /**
+   * Create notification (admin)
+   */
+  create: async (data: Omit<NotificationDTO, 'notificationId' | 'createdAt'>): Promise<NotificationDTO> => {
+    const response = await axiosInstance.post(
+      API_CONFIG.ENDPOINTS.NOTIFICATION_CREATE,
+      data
+    );
+    return response.data;
+  },
+
+  /**
+   * Send notification to user (admin)
+   */
+  sendToUser: async (userId: number, notificationId: number): Promise<UserNotificationDTO> => {
+    const response = await axiosInstance.post(
+      API_CONFIG.ENDPOINTS.NOTIFICATION_SEND,
+      null,
+      { params: { userId, notificationId } }
+    );
+    return response.data;
+  },
+
+  /**
+   * Get notifications for user
+   */
+  getByUserId: async (userId: number): Promise<UserNotificationDTO[]> => {
+    const response = await axiosInstance.get(
+      API_CONFIG.ENDPOINTS.NOTIFICATIONS_BY_USER(userId)
+    );
+    return response.data;
+  },
+
+  /**
+   * Get unread notifications
+   */
+  getUnread: async (userId: number): Promise<UserNotificationDTO[]> => {
+    const response = await axiosInstance.get(
+      API_CONFIG.ENDPOINTS.NOTIFICATIONS_UNREAD(userId)
+    );
+    return response.data;
+  },
+
+  /**
+   * Get unread notification count
+   */
+  getUnreadCount: async (userId: number): Promise<number> => {
+    const response = await axiosInstance.get(
+      API_CONFIG.ENDPOINTS.NOTIFICATIONS_UNREAD_COUNT(userId)
+    );
+    return response.data;
+  },
+
+  /**
+   * Mark notification as read
+   */
+  markAsRead: async (userNotificationId: number): Promise<UserNotificationDTO> => {
+    const response = await axiosInstance.put(
+      API_CONFIG.ENDPOINTS.NOTIFICATION_MARK_READ(userNotificationId)
+    );
+    return response.data;
+  },
+
+  /**
+   * Get notifications by type (admin)
+   */
+  getByType: async (type: 'PROMOTION' | 'ORDER_UPDATE' | 'RESERVATION' | 'SYSTEM'): Promise<NotificationDTO[]> => {
+    const response = await axiosInstance.get(
+      API_CONFIG.ENDPOINTS.NOTIFICATIONS_BY_TYPE(type)
+    );
+    return response.data;
+  },
+
+  /**
+   * Get notifications by priority (admin)
+   */
+  getByPriority: async (priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'): Promise<NotificationDTO[]> => {
+    const response = await axiosInstance.get(
+      API_CONFIG.ENDPOINTS.NOTIFICATIONS_BY_PRIORITY(priority)
+    );
+    return response.data;
+  },
+};
+
+/**
+ * Push Notification API
+ */
+export const pushNotificationApi = {
+  /**
+   * Register push token
+   */
+  registerToken: async (data: {
+    userId: number;
+    pushToken: string;
+    platform: 'android' | 'ios';
+    deviceInfo?: string;
+  }): Promise<any> => {
+    const response = await axiosInstance.post(
+      API_CONFIG.ENDPOINTS.PUSH_TOKEN_REGISTER,
+      data
+    );
+    return response.data;
+  },
+
+  /**
+   * Remove push token
+   */
+  removeToken: async (userId: number, pushToken: string): Promise<void> => {
+    await axiosInstance.delete(
+      API_CONFIG.ENDPOINTS.PUSH_TOKEN_REMOVE,
+      { params: { userId, pushToken } }
+    );
+  },
+};
+
+/**
+ * Ingredient API
+ */
+export interface IngredientDTO {
+  ingredientId?: number;
+  ingredientName: string;
+  description?: string;
+}
+
+export const ingredientApi = {
+  /**
+   * Get all ingredients
+   */
+  getAll: async (): Promise<IngredientDTO[]> => {
+    const response = await axiosInstance.get(API_CONFIG.ENDPOINTS.INGREDIENTS);
+    return response.data;
+  },
+
+  /**
+   * Search ingredients by name
+   */
+  search: async (name: string): Promise<IngredientDTO[]> => {
+    const response = await axiosInstance.get(
+      API_CONFIG.ENDPOINTS.INGREDIENTS_SEARCH,
+      { params: { name } }
+    );
+    return response.data;
+  },
+
+  /**
+   * Get ingredient by ID
+   */
+  getById: async (id: number): Promise<IngredientDTO> => {
+    const response = await axiosInstance.get(
+      API_CONFIG.ENDPOINTS.INGREDIENT_BY_ID(id)
+    );
+    return response.data;
+  },
+
+  /**
+   * Create ingredient (admin)
+   */
+  create: async (data: Omit<IngredientDTO, 'ingredientId'>): Promise<IngredientDTO> => {
+    const response = await axiosInstance.post(
+      API_CONFIG.ENDPOINTS.INGREDIENT_CREATE,
+      data
+    );
+    return response.data;
+  },
+
+  /**
+   * Update ingredient (admin)
+   */
+  update: async (id: number, data: Partial<IngredientDTO>): Promise<IngredientDTO> => {
+    const response = await axiosInstance.put(
+      API_CONFIG.ENDPOINTS.INGREDIENT_UPDATE(id),
+      data
+    );
+    return response.data;
+  },
+
+  /**
+   * Delete ingredient (admin)
+   */
+  delete: async (id: number): Promise<void> => {
+    await axiosInstance.delete(API_CONFIG.ENDPOINTS.INGREDIENT_DELETE(id));
+  },
+};
+
+/**
+ * Allergen API
+ */
+export interface AllergenDTO {
+  allergenId?: number;
+  allergenName: string;
+  description?: string;
+}
+
+export const allergenApi = {
+  /**
+   * Get all allergens
+   */
+  getAll: async (): Promise<AllergenDTO[]> => {
+    const response = await axiosInstance.get(API_CONFIG.ENDPOINTS.ALLERGENS);
+    return response.data;
+  },
+
+  /**
+   * Search allergens by name
+   */
+  search: async (name: string): Promise<AllergenDTO[]> => {
+    const response = await axiosInstance.get(
+      API_CONFIG.ENDPOINTS.ALLERGENS_SEARCH,
+      { params: { name } }
+    );
+    return response.data;
+  },
+
+  /**
+   * Get allergen by ID
+   */
+  getById: async (id: number): Promise<AllergenDTO> => {
+    const response = await axiosInstance.get(
+      API_CONFIG.ENDPOINTS.ALLERGEN_BY_ID(id)
+    );
+    return response.data;
+  },
+
+  /**
+   * Create allergen (admin)
+   */
+  create: async (data: Omit<AllergenDTO, 'allergenId'>): Promise<AllergenDTO> => {
+    const response = await axiosInstance.post(
+      API_CONFIG.ENDPOINTS.ALLERGEN_CREATE,
+      data
+    );
+    return response.data;
+  },
+
+  /**
+   * Update allergen (admin)
+   */
+  update: async (id: number, data: Partial<AllergenDTO>): Promise<AllergenDTO> => {
+    const response = await axiosInstance.put(
+      API_CONFIG.ENDPOINTS.ALLERGEN_UPDATE(id),
+      data
+    );
+    return response.data;
+  },
+
+  /**
+   * Delete allergen (admin)
+   */
+  delete: async (id: number): Promise<void> => {
+    await axiosInstance.delete(API_CONFIG.ENDPOINTS.ALLERGEN_DELETE(id));
+  },
+};
+
+/**
+ * Email API
+ */
+export const emailApi = {
+  /**
+   * Send email (admin)
+   */
+  send: async (data: {
+    to: string;
+    subject: string;
+    body: string;
+  }): Promise<string> => {
+    const response = await axiosInstance.post(
+      API_CONFIG.ENDPOINTS.EMAIL_SEND,
+      data
+    );
+    return response.data;
+  },
 };
 
 export default {
@@ -967,6 +1429,12 @@ export default {
   reservation: reservationApi,
   timeSlot: timeSlotApi,
   payment: paymentApi,
+  invoice: invoiceApi,
+  notification: notificationApi,
+  pushNotification: pushNotificationApi,
+  ingredient: ingredientApi,
+  allergen: allergenApi,
+  email: emailApi,
   instance: axiosInstance,
 };
 
