@@ -1,19 +1,19 @@
-import axios, { AxiosInstance, AxiosResponse, AxiosError } from 'axios';
+import { STORAGE_KEYS } from "@/constants/STORAGE_KEYS";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios, { AxiosError, AxiosInstance, AxiosResponse } from 'axios';
 import { API_CONFIG } from './config';
 import type {
-  CategoryDTO,
-  DishDTO,
-  OrderDTO,
+  AuthResponse,
   CartDTO,
   CartItemDTO,
-  RegisterRequest,
+  CategoryDTO,
+  DishDTO,
+  GlobalSearchResponseDTO,
   LoginRequest,
-  AuthResponse,
-  TableDTO,
-  GlobalSearchResponseDTO, UserDTO,
+  OrderDTO,
+  RegisterRequest,
+  UserDTO,
 } from './types';
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { STORAGE_KEYS } from "@/constants/STORAGE_KEYS";
 // ============================================
 // AXIOS INSTANCE SETUP
 // ============================================
@@ -768,54 +768,6 @@ export const searchApi = {
 };
 
 // ============================================
-// TABLE API
-// ============================================
-
-export const tableApi = {
-  /**
-   * Get all tables
-   */
-  getAll: async (): Promise<TableDTO[]> => {
-    const response = await axiosInstance.get<TableDTO[]>(
-      API_CONFIG.ENDPOINTS.TABLES
-    );
-    return response.data;
-  },
-
-  /**
-   * Get table by ID
-   */
-  getById: async (id: number): Promise<TableDTO> => {
-    const response = await axiosInstance.get<TableDTO>(
-      API_CONFIG.ENDPOINTS.TABLE_BY_ID(id)
-    );
-    return response.data;
-  },
-
-  /**
-   * Get table availability
-   */
-  getAvailability: async (date: string, slotId: number): Promise<any[]> => {
-    const response = await axiosInstance.get(
-      '/api/tables/availability',
-      { params: { date, slotId } }
-    );
-    return response.data;
-  },
-
-  /**
-   * Book a table
-   */
-  book: async (tableCode: string, bookingData: any): Promise<any> => {
-    const response = await axiosInstance.post(
-      `/api/tables/${tableCode}/book`,
-      bookingData
-    );
-    return response.data;
-  },
-};
-
-// ============================================
 // RESERVATION API
 // ============================================
 
@@ -890,34 +842,6 @@ export const reservationApi = {
   },
 };
 
-// ============================================
-// TIME SLOT API
-// ============================================
-
-export interface TimeSlotDTO {
-  slotId: number;
-  label: string;
-  startTime?: string;
-  endTime?: string;
-}
-
-export const timeSlotApi = {
-  /**
-   * Get all time slots
-   */
-  getAll: async (): Promise<TimeSlotDTO[]> => {
-    const response = await axiosInstance.get<TimeSlotDTO[]>('/api/timeslots');
-    return response.data;
-  },
-
-  /**
-   * Get time slot by ID
-   */
-  getById: async (id: number): Promise<TimeSlotDTO> => {
-    const response = await axiosInstance.get<TimeSlotDTO>(`/api/timeslots/${id}`);
-    return response.data;
-  },
-};
 
 // ============================================
 // EXPORTS
@@ -963,9 +887,7 @@ export default {
   order: orderApi,
   cart: cartApi,
   search: searchApi,
-  table: tableApi,
   reservation: reservationApi,
-  timeSlot: timeSlotApi,
   payment: paymentApi,
   instance: axiosInstance,
 };

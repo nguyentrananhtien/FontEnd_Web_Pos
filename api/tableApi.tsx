@@ -3,22 +3,13 @@
 // ============================================
 import { api } from '@/services/api';
 import { API_CONFIG } from "@/services/config";
-import { DiningTableProps, TableAvailableResponse, BookingRequest, TimeSlotItem } from "@/services/types";
-
-const API_URL = API_CONFIG.BASE_URL;
+import { BookingRequest, DiningTableProps, TableAvailableResponse, TimeSlotItem } from "@/services/types";
 
 // lấy thông tin của bàn
 export const getTables = async (): Promise<DiningTableProps[]> => {
   try {
-    const res = await api.get(`${API_CONFIG.ENDPOINTS.TABLES}`);
-
-    if (res.data.success) {
-      return res.data.data;
-    } else if (Array.isArray(res.data)) {
-      return res.data;
-    } else {
-      throw new Error('API returned unsuccessful response');
-    }
+    const res = await api.get<DiningTableProps[]>(`${API_CONFIG.ENDPOINTS.TABLES}`);
+    return res.data; //Lưu ý phần này nếu có lấy thông tin bàn sai
   } catch (error) {
     console.error('Failed to load tables:', error);
     throw error;
@@ -28,8 +19,7 @@ export const getTables = async (): Promise<DiningTableProps[]> => {
 // Lấy ra các khung thời gian đặt bàn
 export const getTimeSlots = async (): Promise<TimeSlotItem[]> => {
   try {
-    const res = await api.get<TimeSlotItem[]>(`/api/timeslots`);
-    console.log('Time slots:', res.data);
+    const res = await api.get<TimeSlotItem[]>(`${API_CONFIG.ENDPOINTS.TIMESLOTS}`);
     return res.data;
   } catch (error) {
     console.error('Failed to load time slots:', error);
@@ -39,14 +29,14 @@ export const getTimeSlots = async (): Promise<TimeSlotItem[]> => {
 
 export const bookingTable = async (
   tableCode: string,
-  payload: BookingRequest,
+  request: BookingRequest,
 ) => {
   try {
     const response = await api.post(
-      `/api/tables/${tableCode}/book`,
-      payload,
+      `${API_CONFIG.ENDPOINTS.BOOKING_TABLE(tableCode)}`,
+      request,
     );
-    return response;
+    return response.data;
   } catch (error) {
     console.error('Failed to book table:', error);
     throw error;
@@ -56,19 +46,15 @@ export const bookingTable = async (
 export const getTablesAvailale = async (
   date: string,
   slotId: number
-): Promise<{ data: TableAvailableResponse[] }> => {
+): Promise<TableAvailableResponse[]> => {
   try {
     const res = await api.get<TableAvailableResponse[]>(
-      `/api/tables/availability`,
+      `${API_CONFIG.ENDPOINTS.AVAILABLE_TABLE}`,
       {
-        params: {
-          date,
-          slotId,
-        },
+        params: { date, slotId, },
       }
     );
-    console.log('Available tables:', res.data);
-    return { data: res.data };
+    return res.data;
   } catch (error) {
     console.error('Failed to check table availability:', error);
     throw error;
