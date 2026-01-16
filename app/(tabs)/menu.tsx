@@ -2,13 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Image, TextInput, TouchableOpacity, Modal, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { router, Href } from 'expo-router';
+import { router, Href, useLocalSearchParams } from 'expo-router';
 import { DishDTO, CategoryDTO } from '@/services/types';
 import { dishApi, categoryApi } from '@/services/api';
 import { useCart } from '@/providers/cart-provider';
-import { debugApiConnection, formatPrice } from '@/services/utils';
+import { formatPrice } from '@/services/utils';
+import DishImage from '@/components/DishImage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function MenuScreen() {
+  const params = useLocalSearchParams();
+  const tableCode = params.tableCode as string | undefined;
+  const reservationId = params.reservationId as string | undefined;
+
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [dishes, setDishes] = useState<DishDTO[]>([]);
@@ -31,11 +37,6 @@ export default function MenuScreen() {
   const fetchDishesAndCategories = async () => {
     try {
       setLoading(true);
-
-      const isApiReachable = await debugApiConnection();
-      if (!isApiReachable) {
-        console.warn('API server may not be running. Check your backend server.');
-      }
 
       const [dishesData, categoriesData] = await Promise.all([
         dishApi.getActive(),
@@ -128,20 +129,35 @@ export default function MenuScreen() {
 
   return (
     <SafeAreaView className="menu flex-1 bg-[#F8F8F8]">
-      {/* Header */}
+      {/* Header - Show table info if came from table */}
       <View className="menu__header px-4 py-4 bg-white shadow-sm">
         <View className="menu__header-content flex-row items-center">
-          <TouchableOpacity
-            className="menu__btn-back"
-            onPress={() => router.back()}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="chevron-back" size={24} color="#000000" />
-          </TouchableOpacity>
-          <Text className="menu__header-title flex-1 text-center text-lg font-bold text-[#000000]">
-            Table - T02
-          </Text>
-          <View className="w-6" />
+          {tableCode ? (
+            <>
+              <TouchableOpacity
+                className="menu__btn-back"
+                onPress={() => router.back()}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="chevron-back" size={24} color="#000000" />
+              </TouchableOpacity>
+              <View className="flex-1 mx-4">
+                <Text className="text-center text-lg font-bold text-[#000000]">
+                  Đặt món - {tableCode}
+                </Text>
+                {reservationId && (
+                  <Text className="text-center text-xs text-gray-500 mt-1">
+                    Mã đặt bàn: #{reservationId}
+                  </Text>
+                )}
+              </View>
+              <View className="w-6" />
+            </>
+          ) : (
+            <Text className="flex-1 text-center text-lg font-bold text-[#000000]">
+              Menu
+            </Text>
+          )}
         </View>
       </View>
 
@@ -267,16 +283,11 @@ export default function MenuScreen() {
               const quantityInCart = getQuantityInCart(dish.id);
               return (
                 <View key={dish.id} className="menu__dish-card w-[48%] bg-white rounded-xl mb-4 overflow-hidden shadow-sm">
-                  {/* Dish Image */}
-                  <Image
-                    source={
-                      dish.imageUrl && dish.imageUrl.trim() !== ''
-                        ? { uri: dish.imageUrl }
-                        : require('../../../assets/images/test.png')
-                    }
-                    className="menu__dish-image w-full aspect-square"
-                    style={{ resizeMode: 'cover' }}
-                    defaultSource={require('../../../assets/images/test.png')}
+                  {/* Dish Image - Now supports base64 */}
+                  <DishImage
+                    imageUrl={dish.imageUrl}
+                    style={{ width: '100%', aspectRatio: 1, resizeMode: 'cover' }}
+                    defaultImage={require('../../assets/images/test.png')}
                   />
 
                   {/* Dish Info */}
@@ -397,15 +408,10 @@ export default function MenuScreen() {
                   <Text className="cart-modal__item-number text-[#666666] text-sm w-10">{index + 1}</Text>
 
                   <View className="cart-modal__item-info flex-1 flex-row items-center">
-                    <Image
-                      source={
-                        item.imageUrl && item.imageUrl.trim() !== ''
-                          ? { uri: item.imageUrl }
-                          : require('../../../assets/images/test.png')
-                      }
-                      className="cart-modal__item-image rounded-lg mr-2"
-                      style={{ width: 48, height: 48, resizeMode: 'cover' }}
-                      defaultSource={require('../../../assets/images/test.png')}
+                    <DishImage
+                      imageUrl={item.imageUrl}
+                      style={{ width: 62, height: 62, borderRadius: 8, marginRight: 8, resizeMode: 'cover' }}
+                      defaultImage={require('../../assets/images/test.png')}
                     />
                     <Text className="cart-modal__item-name text-[#000000] text-sm font-medium flex-1" numberOfLines={2}>
                       {item.name}

@@ -1,7 +1,6 @@
 import { bookingTable, getTables, getTablesAvailale, getTimeSlots } from "@/api/tableApi";
-import { BookingRequest } from "@/props/BookingRequest";
-import { DiningTable } from "@/props/DiningTable";
-import { TimeSlotItem } from "@/props/TimeSlotProps";
+import { useAuth } from "@/providers/auth-provider";
+import { BookingRequest, DiningTableProps, TimeSlotItem } from "@/services/types";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMemo, useState } from "react";
 import { Alert } from "react-native";
@@ -25,6 +24,9 @@ export const useBookingTables = () => {
 
   // Date
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+
+  // User
+  const { user } = useAuth();
 
   const filteredTables = useMemo(() => {
     return tables.filter((t) => {
@@ -51,9 +53,10 @@ export const useBookingTables = () => {
       const date = selectedDate.toISOString().split("T")[0];
       const res = await getTablesAvailale(date, slotId);
 
-      const mappedTables: DiningTable[] = res.data.map((t) => ({
+      const mappedTables: DiningTableProps[] = res.map((t) => ({
         tableId: t.tableId,
         tableCode: t.tableCode,
+        name: t.tableCode,
         seatingCapacity: t.seatingCapacity,
         area: t.area,
         status: t.available ? 'EMPTY' : 'OCCUPIED',
@@ -90,9 +93,14 @@ export const useBookingTables = () => {
 
   const openBookingForm = (tableCode: string) => {
     setSelectedTableCode(tableCode);
-    setBookingModalVisible(true);
     // Reset form nếu cần
-    setFormData({ name: '', email: '', phone: '', totalGuests: '' });
+    setFormData({
+      name: user?.fullName || user?.name || '',
+      email: user?.email || '',
+      phone: user?.phone || '',
+      totalGuests: '1',
+    });
+    setBookingModalVisible(true);
   };
 
   const closeBookingForm = () => {

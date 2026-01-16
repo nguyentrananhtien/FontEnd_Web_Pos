@@ -1,5 +1,5 @@
 import { STATUS_COLOR_MAP } from '@/constants/STATUS_COLOR';
-import { TableCardProps } from '@/props/TableListProps';
+import { TableCardProps } from '@/services/types';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 

@@ -1,4 +1,4 @@
-import { TimeSlot } from "@/props/TimeSlotProps";
+import { TimeSlot } from "@/services/types";
 import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function TimeSlotModal({ visible, loading, timeSlots, onClose, onSelect }: TimeSlot) {

@@ -13,14 +13,13 @@ import {
     StyleSheet,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { authApi } from '@/api/authApi';
 import { WaterDropLoader } from '@/components/WaterDropLoader';
 
 export default function LoginScreen() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isLocalLoading, setIsLocalLoading] = useState(false);
-    const { handleGoogleLogin, isLoading: authLoading } = useAuth();
+    const { login, handleGoogleLogin, isLoading: authLoading } = useAuth();
 
     const isLoading = isLocalLoading || authLoading;
 
@@ -32,22 +31,24 @@ export default function LoginScreen() {
 
         setIsLocalLoading(true);
         try {
-            const response = await authApi.login({ email, password });
-            router.replace('/home');
+            await login({ email, password });
+            console.log('✅ Login successful, navigating to home...');
+            router.replace('/(tabs)/home');
         } catch (error: any) {
-            const errorMessage = error.response?.data?.message || 'Đăng nhâp thất bại. Vui lòng đăng nhâp lại';
-            Alert.alert('Error', errorMessage);
+            console.error('❌ Login error:', error);
+            const errorMessage = error.response?.data?.message || 'Đăng nhập thất bại. Vui lòng thử lại';
+            Alert.alert('Lỗi đăng nhập', errorMessage);
         } finally {
             setIsLocalLoading(false);
         }
     };
 
     const handleForgotPassword = () => {
-        router.push('/forgot-password');
+        router.push('/auth/forgot-password');
     };
 
     const handleRegister = () => {
-        router.push('/register');
+        router.push('/auth/register');
     };
 
     return (
@@ -77,7 +78,7 @@ export default function LoginScreen() {
                                 <Text className="text-sm font-semibold text-gray-700 mb-2">Email</Text>
                                 <TextInput
                                     className="h-12 border border-gray-300 rounded-xl px-4 bg-gray-50"
-                                    placeholder="email của bạn"
+                                    placeholder="Email của bạn"
                                     value={email}
                                     onChangeText={setEmail}
                                     autoCapitalize="none"
@@ -133,7 +134,7 @@ export default function LoginScreen() {
                             </TouchableOpacity>
                             <TouchableOpacity
                                 className="h-12 flex-row items-center justify-center rounded-xl border border-gray-300 bg-white mt-4"
-                                onPress={() => router.push('/phone-login')}
+                                onPress={() => router.push('/auth/phone-login')}
                                 disabled={isLoading}
                             >
                                 <Text className="text-xl mr-3">📱</Text>

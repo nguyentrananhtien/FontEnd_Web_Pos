@@ -1,9 +1,9 @@
-import { TableListProps } from "@/props/TableListProps";
+import { TableListProps } from "@/services/types";
 import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import FilterTabs from "../components/FilterTabs";
-import { LegendBar } from "../components/LegendBar";
-import SearchBar from "../components/SearchBar";
-import TableCard from "../components/TableCard";
+import FilterTabs from "../FilterTabs";
+import LegendBar from "../LegendBar";
+import SearchBar from "../SearchBar";
+import TableCard from "../TableCard";
 
 export default function TableListModal({
   visible,

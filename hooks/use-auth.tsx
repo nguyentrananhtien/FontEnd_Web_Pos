@@ -6,7 +6,7 @@ export const useAuth = () => {
   const logout = async () => {
     try {
       await authApi.logout();
-      router.replace('/login');
+      router.replace('/auth/login');
     } catch (error: any) {
       console.error('Logout failed:', error);
       Alert.alert('Error', 'Logout failed. Please try again.');

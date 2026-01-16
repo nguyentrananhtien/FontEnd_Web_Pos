@@ -1,17 +1,22 @@
+// ============================================
+// AUTH API MODULE
+// ============================================
 import axios, {AxiosError} from 'axios';
 import {AuthResponse, LoginRequest, RegisterRequest, UserDTO} from '@/services/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {API_CONFIG} from '@/services/config';
+import {STORAGE_KEYS} from "@/constants/STORAGE_KEYS";
 
-const TOKEN_KEY = '@auth_token';
-const REFRESH_TOKEN_KEY = '@refresh_token';
-const USER_KEY = '@user_data';
-
+// Create axios instance with configuration
 const axiosInstance = axios.create({
     baseURL: API_CONFIG.BASE_URL,
     timeout: API_CONFIG.TIMEOUT,
     headers: API_CONFIG.HEADERS,
 });
+
+const TOKEN_KEY = STORAGE_KEYS.TOKEN;
+const REFRESH_TOKEN_KEY = STORAGE_KEYS.REFRESH_TOKEN;
+const USER_KEY = STORAGE_KEYS.USER;
 
 axiosInstance.interceptors.request.use(
     async (config) => {

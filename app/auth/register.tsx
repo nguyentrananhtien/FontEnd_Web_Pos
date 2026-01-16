@@ -12,7 +12,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { authApi } from '@/api/authApi';
+import { authApi } from '@/services/api';
 import { WaterDropLoader } from '@/components/WaterDropLoader';
 
 export default function RegisterScreen() {
@@ -45,22 +45,32 @@ export default function RegisterScreen() {
         phone: phone || undefined,
       });
 
-      console.log('Registration successful:', response);
+      console.log('✅ Registration successful:', response);
 
       const elapsed = Date.now() - startTime;
       if (elapsed < 2000) {
         await new Promise(resolve => setTimeout(resolve, 2000 - elapsed));
       }
 
-      Alert.alert('Success', 'Registration successful! You can now login.', [
-        {
-          text: 'OK',
-          onPress: () => router.replace('/login'),
-        },
-      ]);
+      Alert.alert(
+        'Đăng ký thành công! 🎉',
+        'Tài khoản của bạn đã được tạo. Vui lòng đăng nhập để tiếp tục.',
+        [
+          {
+            text: 'Đăng nhập ngay',
+            onPress: () => router.replace('/auth/login'),
+          },
+        ]
+      );
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Registration failed. Please try again.';
-      Alert.alert('Error', errorMessage);
+      console.error('❌ Registration error:', error);
+
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        'Đăng ký thất bại. Vui lòng thử lại.';
+
+      Alert.alert('Lỗi đăng ký', errorMessage);
     } finally {
       setIsLoading(false);
     }

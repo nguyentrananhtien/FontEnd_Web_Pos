@@ -1,10 +1,15 @@
-import axios from 'axios';
+// ============================================
+// ORDER API MODULE
+// ============================================
+import { API_CONFIG } from '@/services/config';
 import { OrderDTO, VNPayPaymentRequest, VNPayPaymentResponse } from '@/services/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_CONFIG } from '@/services/config';
+import axios from 'axios';
 
+// Storage keys
 const TOKEN_KEY = '@auth_token';
 
+// Create axios instance with configuration
 const axiosInstance = axios.create({
   baseURL: API_CONFIG.BASE_URL,
   timeout: API_CONFIG.TIMEOUT,

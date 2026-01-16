@@ -1,19 +1,15 @@
-import { DiningTable } from '@/props/Table';
-import axios from 'axios';
-const API_URL = 'http://localhost:9090/api';
-// export const API_URL = 'http://192.168.1.13:9090/api'; Dùng ipV4 của mạng đang kết nối
+// ============================================
+// TABLE API MODULE
+// ============================================
+import { api } from '@/services/api';
+import { API_CONFIG } from "@/services/config";
+import { BookingRequest, DiningTableProps, TableAvailableResponse, TimeSlotItem } from "@/services/types";
 
 // lấy thông tin của bàn
-export const getTables = async (): Promise<DiningTable[]> => {
+export const getTables = async (): Promise<DiningTableProps[]> => {
   try {
-    const res = await fetch(`${API_URL}/tables`);
-    const json = await res.json();
-
-    if (json.success) {
-      return json.data;
-    } else {
-      throw new Error('API returned unsuccessful response');
-    }
+    const res = await api.get<DiningTableProps[]>(`${API_CONFIG.ENDPOINTS.TABLES}`);
+    return res.data; //Lưu ý phần này nếu có lấy thông tin bàn sai
   } catch (error) {
     console.error('Failed to load tables:', error);
     throw error;
@@ -21,27 +17,28 @@ export const getTables = async (): Promise<DiningTable[]> => {
 };
 
 // Lấy ra các khung thời gian đặt bàn
-export const getTimeSlots = async () => {
+export const getTimeSlots = async (): Promise<TimeSlotItem[]> => {
   try {
-    const res = await axios.get<TimeSlotItem[]>(`${API_URL}/timeslots`);
-    console.log(res.data)
+    const res = await api.get<TimeSlotItem[]>(`${API_CONFIG.ENDPOINTS.TIMESLOTS}`);
     return res.data;
   } catch (error) {
+    console.error('Failed to load time slots:', error);
     throw error;
   }
 }
 
 export const bookingTable = async (
   tableCode: string,
-  payload: BookingRequest,
+  request: BookingRequest,
 ) => {
   try {
-    const response = await axios.post(
-      `${API_URL}/tables/${tableCode}/book`,
-      payload,
+    const response = await api.post(
+      `${API_CONFIG.ENDPOINTS.BOOKING_TABLE(tableCode)}`,
+      request,
     );
-    return response;
+    return response.data;
   } catch (error) {
+    console.error('Failed to book table:', error);
     throw error;
   }
 };
@@ -49,20 +46,17 @@ export const bookingTable = async (
 export const getTablesAvailale = async (
   date: string,
   slotId: number
-): Promise<{ data: TableAvailableResponse[] }> => {
+): Promise<TableAvailableResponse[]> => {
   try {
-    const res = await axios.get<TableAvailableResponse[]>(
-      `${API_URL}/tables/availability`,
+    const res = await api.get<TableAvailableResponse[]>(
+      `${API_CONFIG.ENDPOINTS.AVAILABLE_TABLE}`,
       {
-        params: {
-          date,
-          slotId,
-        },
+        params: { date, slotId, },
       }
     );
-    console.log(res.data);
-    return { data: res.data };
+    return res.data;
   } catch (error) {
+    console.error('Failed to check table availability:', error);
     throw error;
   }
 };

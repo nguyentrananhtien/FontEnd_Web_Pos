@@ -1,12 +1,14 @@
-import React, {createContext, useContext, ReactNode, useState, useEffect} from 'react';
-import {authApi} from '@/api/authApi';
-import {UserDTO, LoginRequest, RegisterRequest} from '@/services/types';
+import { authApi } from '@/services/api';
+import { LoginRequest, RegisterRequest, UserDTO } from '@/services/types';
+import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 
-import * as WebBrowser from 'expo-web-browser';
-import * as Linking from 'expo-linking';
+import { STORAGE_KEYS } from '@/constants/STORAGE_KEYS';
+import { API_CONFIG } from "@/services/config";
+import pushNotificationService from '@/services/pushNotificationService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {jwtDecode} from 'jwt-decode';
-import {router} from 'expo-router';
+import * as Linking from 'expo-linking';
+import { router } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 
 
 interface AuthContextType {
@@ -16,17 +18,10 @@ interface AuthContextType {
     login: (data: LoginRequest) => Promise<void>;
     register: (data: RegisterRequest) => Promise<void>;
     loginSuccess: (accessToken: string, refreshToken: string) => Promise<void>;
-    handleGoogleLogin: () => Promise<void>; // Thêm vào interface
+    handleGoogleLogin: () => Promise<void>;
     logout: () => Promise<void>;
     logoutAll: () => Promise<void>;
-}
-
-interface MyTokenPayload {
-    sub: string;
-    fullName?: string;
-    roles?: string[];
-
-    [key: string]: any;
+    refreshUserData: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -41,34 +36,51 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({children}) => {
 
     const checkAuth = async () => {
         try {
-            const token = await AsyncStorage.getItem('@auth_token');
+            const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
             if (token) {
-                const userData = await authApi.getUser();
+                // Set token to axios instance
+                await authApi.setToken(token);
+
+                // Fetch current user from backend (uses JWT from Redis)
+                const userData = await authApi.getCurrentUser();
                 setUser(userData);
             }
         } catch (error) {
             console.error('Auth check failed:', error);
+            // Clear invalid token
+            await AsyncStorage.removeItem(STORAGE_KEYS.TOKEN);
+            await AsyncStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
         } finally {
             setIsLoading(false);
         }
     };
 
+    const refreshUserData = async () => {
+        try {
+            const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
+            if (token) {
+                await authApi.setToken(token);
+                const userData = await authApi.getCurrentUser();
+                setUser(userData);
+            }
+        } catch (error) {
+            console.error('Failed to refresh user data:', error);
+        }
+    };
+
     const loginSuccess = async (accessToken: string, refreshToken: string) => {
         try {
-            await AsyncStorage.setItem('access_token', accessToken);
-            await AsyncStorage.setItem('refresh_token', refreshToken);
+            console.log('💾 Saving auth tokens...');
+            await AsyncStorage.setItem(STORAGE_KEYS.TOKEN, accessToken);
+            await AsyncStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
 
-            const decoded = jwtDecode<MyTokenPayload>(accessToken);
-            const userDto = {
-                id: decoded.userId || decoded.sub,
-                email: decoded.sub,
-                fullName: decoded.fullName || 'Google User',
-                roles: decoded.roles || ['customer'],
-            } as unknown as UserDTO;
-
-            setUser(userDto);
+            // Fetch full user data from backend
+            const userData = await authApi.getCurrentUser();
+            console.log('✅ Login success, user:', userData.email);
+            setUser(userData);
         } catch (error) {
-            console.error('Failed to persist auth data', error);
+            console.error('❌ Failed to persist auth data', error);
+            throw error;
         }
     };
 
@@ -76,7 +88,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({children}) => {
         setIsLoading(true);
         try {
 
-            const authUrl = `https://jasmine-unphlegmatical-cognately.ngrok-free.dev/oauth2/authorization/google`;
+            const authUrl = API_CONFIG.BASE_URL + `/oauth2/authorization/google`;
 
             const redirectUrl = Linking.createURL('/auth-success');
 
@@ -88,7 +100,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({children}) => {
 
                 if (accessToken) {
                     await loginSuccess(accessToken, refreshToken);
-                    router.replace('/home');
+                    router.replace('/(tabs)/home');
                 }
             }
         } catch (error) {
@@ -100,22 +112,58 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({children}) => {
 
     const login = async (data: LoginRequest) => {
         const response = await authApi.login(data);
-        setUser(response.user);
+        await loginSuccess(response.accessToken, response.refreshToken);
     };
 
     const register = async (data: RegisterRequest) => {
         const response = await authApi.register(data);
-        setUser(response.user);
+        await loginSuccess(response.accessToken, response.refreshToken);
     };
 
     const logout = async () => {
-        await AsyncStorage.clear();
-        setUser(null);
+        try {
+            // Remove push token from backend before logout
+            if (user?.id) {
+                try {
+                    const pushToken = await AsyncStorage.getItem('EXPO_PUSH_TOKEN');
+                    if (pushToken) {
+                        await pushNotificationService.removePushTokenFromBackend(user.id, pushToken);
+                    }
+                } catch (error) {
+                    console.error('Failed to remove push token:', error);
+                }
+            }
+
+            await authApi.logout();
+        } catch (error) {
+            console.error('Logout error:', error);
+        } finally {
+            await authApi.clearToken();
+            setUser(null);
+        }
     };
 
     const logoutAll = async () => {
-        await AsyncStorage.clear();
-        setUser(null);
+        try {
+            // Remove push token from backend before logout
+            if (user?.id) {
+                try {
+                    const pushToken = await AsyncStorage.getItem('EXPO_PUSH_TOKEN');
+                    if (pushToken) {
+                        await pushNotificationService.removePushTokenFromBackend(user.id, pushToken);
+                    }
+                } catch (error) {
+                    console.error('Failed to remove push token:', error);
+                }
+            }
+
+            await authApi.logoutAll();
+        } catch (error) {
+            console.error('Logout all error:', error);
+        } finally {
+            await authApi.clearToken();
+            setUser(null);
+        }
     };
 
     return (
@@ -130,6 +178,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({children}) => {
                 handleGoogleLogin,
                 logout,
                 logoutAll,
+                refreshUserData,
             }}
         >
             {children}
