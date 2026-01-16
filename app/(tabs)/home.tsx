@@ -78,7 +78,7 @@ export default function HomeScreen() {
           onPress: async () => {
             try {
               await logout();
-              router.replace('/login');
+              router.replace('auth/login');
             } catch (error) {
               Alert.alert('Lỗi', 'Đăng xuất thất bại. Vui lòng thử lại.');
             }
@@ -151,7 +151,7 @@ export default function HomeScreen() {
                   <View className="w-[30%]">
                     <QuickActionButton
                       icon="event-seat"
-                      label="Table Reservation"
+                      label="Reservation"
                       onPress={() => router.push('/(tabs)/dining')}
                     />
                   </View>

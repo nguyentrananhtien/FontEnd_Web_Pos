@@ -118,7 +118,7 @@ export default function ProfileScreen() {
             };
 
             // Use api.instance để tự động include token
-            const response = await api.instance.put(
+            await api.instance.put(
                 `/api/v1/accounts/${account.id}`,
                 updateDto
             );
@@ -159,15 +159,21 @@ export default function ProfileScreen() {
     return (
         <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => setShowAvatarModal(true)} style={styles.avatarContainer}>
+                <TouchableOpacity
+                    onPress={() => isEditing ? setShowAvatarModal(true) : null}
+                    style={styles.avatarContainer}
+                    disabled={!isEditing}
+                >
                     {account.avatar ? (
                         <Image source={{ uri: account.avatar }} style={styles.avatar} />
                     ) : (
                         <Ionicons name="person-circle" size={100} color="#f97316" />
                     )}
-                    <View style={styles.avatarEditBadge}>
-                        <Ionicons name="camera" size={18} color="#fff" />
-                    </View>
+                    {isEditing && (
+                        <View style={styles.avatarEditBadge}>
+                            <Ionicons name="camera" size={18} color="#fff" />
+                        </View>
+                    )}
                 </TouchableOpacity>
                 <Text style={styles.emailText}>{account.email || 'Loading...'}</Text>
 
@@ -227,7 +233,6 @@ export default function ProfileScreen() {
 
             {/* Các chức năng bổ trợ */}
             <View style={styles.actionSection}>
-                <Text style={styles.sectionTitle}>Tài khoản & Hoạt động</Text>
 
                 <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/(tabs)/orders')}>
                     <View style={styles.menuIconBox}><Ionicons name="receipt" size={20} color="#f97316" /></View>
@@ -247,13 +252,12 @@ export default function ProfileScreen() {
                     <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                    style={[styles.menuItem, { borderBottomWidth: 0 }]}
-                    onPress={() => router.replace('/auth/login')}
-                >
-                    <View style={[styles.menuIconBox, { backgroundColor: '#FEE2E2' }]}><Ionicons name="log-out" size={20} color="#EF4444" /></View>
-                    <Text style={[styles.menuText, { color: '#EF4444' }]}>Đăng xuất</Text>
+                <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/(tabs)/home')}>
+                    <View style={styles.menuIconBox}><Ionicons name="home" size={20} color="#f97316" /></View>
+                    <Text style={styles.menuText}>Quay lại</Text>
+                    <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
                 </TouchableOpacity>
+
             </View>
 
             <Modal
