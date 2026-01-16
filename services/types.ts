@@ -1,4 +1,4 @@
-import {TABLE_STATUSES} from "@/constants/STATUS_COLOR";
+import { TABLE_STATUSES } from "@/constants/STATUS_COLOR";
 
 export interface DishDTO {
   id: number;
@@ -142,14 +142,12 @@ export interface VNPayPaymentResponse {
   status: string;
 }
 
-export interface TableDTO {
-  id: number;
+export interface DiningTableProps {
+  tableId: string;
   tableCode: string;
-  name: string;
   seatingCapacity: number;
+  status: 'EMPTY' | 'OCCUPIED';
   area: string;
-  status: 'EMPTY' | 'OCCUPIED' | 'RESERVED' | 'PENDING';
-  description?: string;
 }
 
 export interface SearchResultDTO {
@@ -210,14 +208,6 @@ export interface TimeSlot {
   timeSlots: TimeSlotItem[];
   onClose: () => void;
   onSelect: (slot: TimeSlotItem) => void;
-}
-
-export interface DiningTableProps {
-  tableId: string;
-  tableCode: string;
-  seatingCapacity: number;
-  status: 'EMPTY' | 'OCCUPIED';
-  area: string;
 }
 
 export interface TableListProps {
