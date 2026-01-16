@@ -151,7 +151,7 @@ export default function HomeScreen() {
                   <View className="w-[30%]">
                     <QuickActionButton
                       icon="event-seat"
-                      label="Table Reservation"
+                      label="Reservation"
                       onPress={() => router.push('/(tabs)/dining')}
                     />
                   </View>

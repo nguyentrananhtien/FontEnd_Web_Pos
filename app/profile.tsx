@@ -233,7 +233,6 @@ export default function ProfileScreen() {
 
             {/* Các chức năng bổ trợ */}
             <View style={styles.actionSection}>
-                <Text style={styles.sectionTitle}>Tài khoản & Hoạt động</Text>
 
                 <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/(tabs)/orders')}>
                     <View style={styles.menuIconBox}><Ionicons name="receipt" size={20} color="#f97316" /></View>
@@ -250,6 +249,12 @@ export default function ProfileScreen() {
                 <TouchableOpacity style={styles.menuItem} onPress={handleChangePassword}>
                     <View style={styles.menuIconBox}><Ionicons name="lock-closed" size={20} color="#f97316" /></View>
                     <Text style={styles.menuText}>Đổi mật khẩu</Text>
+                    <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/(tabs)/home')}>
+                    <View style={styles.menuIconBox}><Ionicons name="home" size={20} color="#f97316" /></View>
+                    <Text style={styles.menuText}>Quay lại</Text>
                     <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
                 </TouchableOpacity>
 

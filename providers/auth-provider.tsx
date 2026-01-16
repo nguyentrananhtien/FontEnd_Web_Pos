@@ -4,7 +4,7 @@ import React, { createContext, ReactNode, useContext, useEffect, useState } from
 
 import { STORAGE_KEYS } from '@/constants/STORAGE_KEYS';
 import { API_CONFIG } from "@/services/config";
-import pushNotificationService from '@/services/pushNotificationService';
+import inAppNotificationService from '@/services/inAppNotificationService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
@@ -34,6 +34,38 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({children}) => {
         checkAuth();
     }, []);
 
+    // Initialize notifications when user is authenticated
+    useEffect(() => {
+        if (user?.id) {
+            initializeNotifications();
+        } else {
+            inAppNotificationService.stopNotificationPolling();
+        }
+
+        return () => {
+            inAppNotificationService.stopNotificationPolling();
+        };
+    }, [user?.id]);
+
+    const initializeNotifications = async () => {
+        try {
+            // Initialize notification permissions
+            const hasPermission = await inAppNotificationService.initializeNotifications();
+
+            if (hasPermission && user?.id) {
+                // Sync initial badge count
+                await inAppNotificationService.syncBadgeCount(user.id);
+
+                // Start polling for new notifications (every 30 seconds)
+                inAppNotificationService.startNotificationPolling(user.id, 30000);
+
+                console.log('✅ In-app notifications initialized for user:', user.id);
+            }
+        } catch (error) {
+            console.error('❌ Failed to initialize notifications:', error);
+        }
+    };
+
     const checkAuth = async () => {
         try {
             const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
@@ -42,14 +74,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({children}) => {
                 await authApi.setToken(token);
 
                 // Fetch current user from backend (uses JWT from Redis)
-                const userData = await authApi.getCurrentUser();
-                setUser(userData);
+                try {
+                    const userData = await authApi.getCurrentUser();
+                    setUser(userData);
+                } catch (error: any) {
+                    // Token expired or invalid - clear it silently
+                    const status = error.response?.status;
+                    if (status === 401) {
+                        console.log('🔄 Token expired, clearing...');
+                    } else {
+                        console.error('Auth check failed:', error);
+                    }
+
+                    // Clear invalid/expired token
+                    await AsyncStorage.removeItem(STORAGE_KEYS.TOKEN);
+                    await AsyncStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+                    await authApi.clearToken();
+                }
             }
         } catch (error) {
-            console.error('Auth check failed:', error);
-            // Clear invalid token
-            await AsyncStorage.removeItem(STORAGE_KEYS.TOKEN);
-            await AsyncStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+            console.error('Auth check error:', error);
         } finally {
             setIsLoading(false);
         }
@@ -122,17 +166,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({children}) => {
 
     const logout = async () => {
         try {
-            // Remove push token from backend before logout
-            if (user?.id) {
-                try {
-                    const pushToken = await AsyncStorage.getItem('EXPO_PUSH_TOKEN');
-                    if (pushToken) {
-                        await pushNotificationService.removePushTokenFromBackend(user.id, pushToken);
-                    }
-                } catch (error) {
-                    console.error('Failed to remove push token:', error);
-                }
-            }
+            // Stop notification polling
+            inAppNotificationService.stopNotificationPolling();
 
             await authApi.logout();
         } catch (error) {
@@ -145,17 +180,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({children}) => {
 
     const logoutAll = async () => {
         try {
-            // Remove push token from backend before logout
-            if (user?.id) {
-                try {
-                    const pushToken = await AsyncStorage.getItem('EXPO_PUSH_TOKEN');
-                    if (pushToken) {
-                        await pushNotificationService.removePushTokenFromBackend(user.id, pushToken);
-                    }
-                } catch (error) {
-                    console.error('Failed to remove push token:', error);
-                }
-            }
+            // Stop notification polling
+            inAppNotificationService.stopNotificationPolling();
 
             await authApi.logoutAll();
         } catch (error) {

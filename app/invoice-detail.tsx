@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  Linking,
   Platform,
   ToastAndroid
 } from 'react-native';
@@ -14,6 +13,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import api from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/providers/auth-provider';
+import useVNPayPayment from '@/hooks/useVNPayPayment';
 
 interface InvoiceItem {
   dishId: number;
@@ -40,29 +40,13 @@ interface Invoice {
 export default function InvoiceDetailScreen() {
   const { invoiceId } = useLocalSearchParams();
   const { user } = useAuth();
+  const { loading: paying, createPaymentFromInvoice } = useVNPayPayment();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
-  const [paying, setPaying] = useState(false);
 
   useEffect(() => {
     fetchInvoiceDetail();
   }, [invoiceId]);
-
-  useEffect(() => {
-    // Listen for payment result from deep link
-    const handleDeepLink = (event: { url: string }) => {
-      const url = event.url;
-      if (url.includes('vnpay-return') || url.includes('payment-result')) {
-        handlePaymentResult(url);
-      }
-    };
-
-    const subscription = Linking.addEventListener('url', handleDeepLink);
-
-    return () => {
-      subscription.remove();
-    };
-  }, []);
 
   const fetchInvoiceDetail = async () => {
     try {
@@ -90,78 +74,10 @@ export default function InvoiceDetailScreen() {
       return;
     }
 
-    setPaying(true);
-    try {
-      // Call payment API
-      const paymentResponse = await api.payment.createFromInvoice(
-        invoice.invoiceId,
-        user.id
-      );
+    const success = await createPaymentFromInvoice(invoice.invoiceId, user.id);
 
-      if (paymentResponse.paymentUrl) {
-        showToast('Đang chuyển đến trang thanh toán...', 'success');
-
-        // Open VNPay URL in browser
-        const supported = await Linking.canOpenURL(paymentResponse.paymentUrl);
-        if (supported) {
-          await Linking.openURL(paymentResponse.paymentUrl);
-        } else {
-          showToast('Không thể mở trang thanh toán', 'error');
-        }
-      } else {
-        showToast('Không nhận được link thanh toán', 'error');
-      }
-    } catch (error: any) {
-      console.error('Payment error:', error);
-      showToast(
-        error.response?.data?.message || 'Không thể tạo thanh toán. Vui lòng thử lại.',
-        'error'
-      );
-    } finally {
-      setPaying(false);
-    }
-  };
-
-  const handlePaymentResult = async (url: string) => {
-    try {
-      const urlParams = new URLSearchParams(url.split('?')[1]);
-      const responseCode = urlParams.get('vnp_ResponseCode');
-      const txnRef = urlParams.get('vnp_TxnRef');
-
-      if (responseCode === '00') {
-        // Payment successful
-        showToast('✅ Thanh toán thành công!', 'success');
-
-        // Refresh invoice to get updated status
-        await fetchInvoiceDetail();
-
-        Alert.alert(
-          'Thanh toán thành công',
-          `Hóa đơn #${invoiceId} đã được thanh toán.\n\nMã giao dịch: ${txnRef}`,
-          [
-            {
-              text: 'Xem hóa đơn',
-              onPress: () => router.push(`/invoice-detail?invoiceId=${invoiceId}`)
-            },
-            {
-              text: 'Về danh sách',
-              onPress: () => router.push('/invoices')
-            }
-          ]
-        );
-      } else {
-        // Payment failed
-        showToast('❌ Thanh toán thất bại hoặc đã bị hủy', 'error');
-
-        Alert.alert(
-          'Thanh toán thất bại',
-          'Giao dịch không thành công. Vui lòng thử lại.',
-          [{ text: 'OK' }]
-        );
-      }
-    } catch (error) {
-      console.error('Error handling payment result:', error);
-      showToast('Lỗi xử lý kết quả thanh toán', 'error');
+    if (success) {
+      showToast('Đang chuyển đến trang thanh toán...', 'success');
     }
   };
 

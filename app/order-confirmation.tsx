@@ -138,7 +138,7 @@ export default function OrderConfirmationScreen() {
   };
 
   const handleBackToMenu = () => {
-    router.replace("/(tabs)/screen/menu" as Href);
+    router.replace("/(tabs)/menu" as Href);
   };
 
   if (orderConfirmed) {

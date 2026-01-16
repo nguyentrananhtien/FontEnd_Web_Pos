@@ -40,15 +40,15 @@ axiosInstance.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    console.log(`🚀 [API] ${config.method?.toUpperCase()} ${config.url}`);
+    console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`);
     if (config.params) console.log('   Params:', config.params);
     if (config.data) console.log('   Data:', config.data);
-    if (token) console.log('   🔑 Token:', token.substring(0, 20) + '...');
+    if (token) console.log(' Token:', token.substring(0, 20) + '...');
 
     return config;
   },
   (error) => {
-    console.error('❌ [API] Request Error:', error);
+    console.error('[API] Request Error:', error);
     return Promise.reject(error);
   }
 );
@@ -89,7 +89,12 @@ axiosInstance.interceptors.response.use(
       data: error.response?.data,
     };
 
-    console.error('❌ [API] Response Error:', errorDetails);
+    // Don't log 401 errors as ERROR (they are expected when token expires)
+    if (error.response?.status === 401) {
+      console.log('🔄 [API] 401 - Token expired or invalid:', error.config?.url);
+    } else {
+      console.error('❌ [API] Response Error:', errorDetails);
+    }
 
     // Handle specific error types BEFORE 401 handling
 
