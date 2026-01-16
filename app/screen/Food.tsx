@@ -1,3 +1,4 @@
+import { API_CONFIG } from "@/services/config";
 import { format } from "date-fns";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -10,7 +11,6 @@ import {
   TextInput,
   View,
 } from "react-native";
-import {API_CONFIG} from "@/services/config";
 
 const SLOTS = [
   { slotId: 1, start: "06:00", label: "06:00 - 09:00" },
@@ -154,7 +154,7 @@ export default function Food() {
           )}
 
           <View style={styles.actions}>
-            <Button title="Hủy" onPress={() => router.back()} />
+            <Button title="Hủy" onPress={() => router.navigate('(tabs)/home')} />
             <Button
               title={isLoading ? "Đang xử lý..." : "Check-in"}
               onPress={handleCheckIn}

@@ -316,9 +316,9 @@ export default function OrderDetailScreen() {
         {!canPay && !canCancel && (
           <TouchableOpacity
             style={[styles.actionButton, styles.backToMenuButton]}
-            onPress={() => router.push('/(tabs)/screen/menu')}
+            onPress={() => router.push('/(tabs)/orders')}
           >
-            <Text style={styles.backToMenuText}>Back to Menu</Text>
+            <Text style={styles.backToMenuText}>Back to Orders</Text>
           </TouchableOpacity>
         )}
       </View>

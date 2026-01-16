@@ -67,7 +67,7 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
-        name="CheckIn" // tên file: CheckIn.tsx
+        name="checkin"
         options={{
           title: 'Check In', // <-- tên hiển thị trên tab
           tabBarIcon: ({ color }) => (
@@ -76,6 +76,15 @@ export default function TabLayout() {
         }}
       />
 
+    <Tabs.Screen
+        name="vnpaytest"
+        options={{
+            title: "Test",
+            tabBarIcon: ({ color }) => (
+                <MaterialIcons name="receipt-long" size={24} color={color} />
+            ),
+        }}
+    />
       {/* Hidden screens - accessible via navigation but not shown in tab bar */}
       <Tabs.Screen
         name="cart"

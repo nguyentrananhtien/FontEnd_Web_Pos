@@ -8,11 +8,15 @@ import { BookingRequest, DiningTableProps, TableAvailableResponse, TimeSlotItem 
 // lấy thông tin của bàn
 export const getTables = async (): Promise<DiningTableProps[]> => {
   try {
-    const res = await api.get<DiningTableProps[]>(`${API_CONFIG.ENDPOINTS.TABLES}`);
-    return res.data; //Lưu ý phần này nếu có lấy thông tin bàn sai
+    const res = await api.get(`${API_CONFIG.ENDPOINTS.TABLES}`);
+
+    // 👇 đảm bảo luôn trả về array
+    return Array.isArray(res.data?.data)
+      ? res.data.data
+      : [];
   } catch (error) {
     console.error('Failed to load tables:', error);
-    throw error;
+    return [];
   }
 };
 

@@ -21,7 +21,9 @@ export default function MenuScreen() {
   const [categories, setCategories] = useState<CategoryDTO[]>([]);
   const [filteredDishes, setFilteredDishes] = useState<DishDTO[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sortBy, setSortBy] = useState<'price' | 'name' | null>(null);
+  // 0 = off, 1 = ascending, 2 = descending
+  const [priceSort, setPriceSort] = useState(0);
+  const [nameSort, setNameSort] = useState(0);
   const [showCartPopup, setShowCartPopup] = useState(false);
 
   const { cart, addToCart, removeFromCart, updateQuantity, getQuantityInCart, getTotalItems, getTotalAmount } = useCart();
@@ -32,7 +34,7 @@ export default function MenuScreen() {
 
   useEffect(() => {
     filterAndSortDishes();
-  }, [dishes, selectedCategory, searchQuery, sortBy]);
+  }, [dishes, selectedCategory, searchQuery, priceSort, nameSort]);
 
   const fetchDishesAndCategories = async () => {
     try {
@@ -74,11 +76,17 @@ export default function MenuScreen() {
       );
     }
 
-    // Apply sorting
-    if (sortBy === 'price') {
-      filtered = [...filtered].sort((a, b) => a.price - b.price);
-    } else if (sortBy === 'name') {
-      filtered = [...filtered].sort((a, b) => a.name.localeCompare(b.name));
+    // Apply sorting with 3 states: off (0), ascending (1), descending (2)
+    if (priceSort === 1) {
+      filtered = [...filtered].sort((a, b) => a.price - b.price); // Ascending
+    } else if (priceSort === 2) {
+      filtered = [...filtered].sort((a, b) => b.price - a.price); // Descending
+    }
+
+    if (nameSort === 1) {
+      filtered = [...filtered].sort((a, b) => a.name.localeCompare(b.name)); // A-Z
+    } else if (nameSort === 2) {
+      filtered = [...filtered].sort((a, b) => b.name.localeCompare(a.name)); // Z-A
     }
 
     setFilteredDishes(filtered);
@@ -233,38 +241,58 @@ export default function MenuScreen() {
 
       {/* Filter Bar */}
       <View className="menu__filter-bar flex-row px-4 mb-3 space-x-2 bg-[#F8F8F8]">
+        {/* Price Filter - 3 states: off -> asc -> desc -> off */}
         <TouchableOpacity
           className={`menu__filter-btn flex-row items-center px-4 py-2 rounded-lg bg-white border ${
-            sortBy === 'price' ? 'border-[#D97639]' : 'border-[#E5E5E5]'
+            priceSort > 0 ? 'border-[#D97639]' : 'border-[#E5E5E5]'
           }`}
-          onPress={() => setSortBy(sortBy === 'price' ? null : 'price')}
+          onPress={() => {
+            setPriceSort((prev) => (prev + 1) % 3);
+            setNameSort(0); // Reset name sort
+          }}
           activeOpacity={0.7}
         >
-          <Text className={`menu__filter-text text-sm ${sortBy === 'price' ? 'text-[#D97639] font-semibold' : 'text-[#666666]'}`}>
-            Price
+          <Text className={`menu__filter-text text-sm ${priceSort > 0 ? 'text-[#D97639] font-semibold' : 'text-[#666666]'}`}>
+            Giá
           </Text>
           <Ionicons
-            name={sortBy === 'price' ? 'arrow-up' : 'arrow-down'}
+            name={
+              priceSort === 0
+                ? 'swap-vertical-outline'
+                : priceSort === 1
+                ? 'trending-up'
+                : 'trending-down'
+            }
             size={16}
-            color={sortBy === 'price' ? '#D97639' : '#666666'}
+            color={priceSort > 0 ? '#D97639' : '#666666'}
             style={{ marginLeft: 4 }}
           />
         </TouchableOpacity>
 
+        {/* Name Filter - 3 states: off -> A-Z -> Z-A -> off */}
         <TouchableOpacity
           className={`menu__filter-btn flex-row items-center px-4 py-2 rounded-lg bg-white border ${
-            sortBy === 'name' ? 'border-[#D97639]' : 'border-[#E5E5E5]'
+            nameSort > 0 ? 'border-[#D97639]' : 'border-[#E5E5E5]'
           }`}
-          onPress={() => setSortBy(sortBy === 'name' ? null : 'name')}
+          onPress={() => {
+            setNameSort((prev) => (prev + 1) % 3);
+            setPriceSort(0); // Reset price sort
+          }}
           activeOpacity={0.7}
         >
-          <Text className={`menu__filter-text text-sm ${sortBy === 'name' ? 'text-[#D97639] font-semibold' : 'text-[#666666]'}`}>
-            A-Z
+          <Text className={`menu__filter-text text-sm ${nameSort > 0 ? 'text-[#D97639] font-semibold' : 'text-[#666666]'}`}>
+            {nameSort === 1 ? 'A-Z' : nameSort === 2 ? 'Z-A' : 'Tên'}
           </Text>
           <Ionicons
-            name={sortBy === 'name' ? 'arrow-up' : 'arrow-down'}
+            name={
+              nameSort === 0
+                ? 'swap-vertical-outline'
+                : nameSort === 1
+                ? 'arrow-up'
+                : 'arrow-down'
+            }
             size={16}
-            color={sortBy === 'name' ? '#D97639' : '#666666'}
+            color={nameSort > 0 ? '#D97639' : '#666666'}
             style={{ marginLeft: 4 }}
           />
         </TouchableOpacity>
