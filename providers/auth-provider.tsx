@@ -7,7 +7,7 @@ import { API_CONFIG } from "@/services/config";
 import inAppNotificationService from '@/services/inAppNotificationService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Linking from 'expo-linking';
-import { router } from 'expo-router';
+import { router, useSegments, usePathname } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 
 
@@ -29,10 +29,44 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({children}) => {
     const [user, setUser] = useState<UserDTO | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const segments = useSegments();
+    const pathname = usePathname();
+
+    // Check if current route is an auth route
+    const isAuthRoute = () => {
+        // Check if pathname contains 'auth'
+        if (pathname?.includes('/auth/')) {
+            return true;
+        }
+
+        // Check segments
+        if (segments && segments.length > 0) {
+            return segments[0] === 'auth' || segments.includes('auth');
+        }
+
+        return false;
+    };
 
     useEffect(() => {
+        // Skip checkAuth if on auth pages (login, register, forgot-password, etc.)
+        const onAuthPage = isAuthRoute();
+
+        console.log('🔍 AuthProvider check:', {
+            pathname,
+            segments,
+            onAuthPage
+        });
+
+        if (onAuthPage) {
+            console.log('🔒 On auth page, skipping auth check and /me call');
+            setIsLoading(false);
+            setUser(null);
+            return;
+        }
+
+        console.log('✅ Not on auth page, running checkAuth...');
         checkAuth();
-    }, []);
+    }, [pathname, segments]);
 
     // Initialize notifications when user is authenticated
     useEffect(() => {
@@ -73,27 +107,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({children}) => {
                 // Set token to axios instance
                 await authApi.setToken(token);
 
-                // Fetch current user from backend (uses JWT from Redis)
-                try {
-                    const userData = await authApi.getCurrentUser();
-                    setUser(userData);
-                } catch (error: any) {
-                    // Token expired or invalid - clear it silently
-                    const status = error.response?.status;
-                    if (status === 401) {
-                        console.log('🔄 Token expired, clearing...');
-                    } else {
-                        console.error('Auth check failed:', error);
-                    }
-
-                    // Clear invalid/expired token
-                    await AsyncStorage.removeItem(STORAGE_KEYS.TOKEN);
-                    await AsyncStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
-                    await authApi.clearToken();
+                // First, try to load user from AsyncStorage (faster, no network call)
+                const storedUser = await authApi.getUser();
+                if (storedUser) {
+                    setUser(storedUser);
+                    console.log('✅ Loaded user from cache:', storedUser.email);
                 }
+
+            } else {
+                // No token - ensure user is null
+                setUser(null);
             }
         } catch (error) {
             console.error('Auth check error:', error);
+            setUser(null);
         } finally {
             setIsLoading(false);
         }
@@ -106,9 +133,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({children}) => {
                 await authApi.setToken(token);
                 const userData = await authApi.getCurrentUser();
                 setUser(userData);
+                console.log('✅ User data refreshed:', userData.email);
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Failed to refresh user data:', error);
+
+            // If token expired (401), clear auth data
+            if (error.response?.status === 401) {
+                console.log('🔄 Token expired during refresh, clearing auth...');
+                await authApi.clearToken();
+                setUser(null);
+            }
         }
     };
 
@@ -155,6 +190,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({children}) => {
     };
 
     const login = async (data: LoginRequest) => {
+        // Clear any existing auth data first
+        await authApi.clearToken();
+        setUser(null);
+
         const response = await authApi.login(data);
         await loginSuccess(response.accessToken, response.refreshToken);
     };

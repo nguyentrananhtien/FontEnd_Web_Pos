@@ -146,7 +146,7 @@ export const useBookingTables = () => {
       const response = await bookingTable(selectedTableCode, payload);
 
       console.log(response.data);
-      if (response.data.success) {
+      if (response.success) {
         Alert.alert('Thành công', 'Đặt bàn thành công! Mã đặt bàn đã được gửi qua email.');
 
         closeBookingForm();

@@ -332,7 +332,7 @@ export const authApi = {
   },
 
   clearToken: async (): Promise<void> => {
-    await AsyncStorage.removeItem(TOKEN_KEY);
+    await AsyncStorage.multiRemove([TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY]);
   },
 
   getToken: async (): Promise<string | null> => {

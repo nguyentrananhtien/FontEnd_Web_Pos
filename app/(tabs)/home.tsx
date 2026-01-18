@@ -93,7 +93,7 @@ export default function HomeScreen() {
           onPress: async () => {
             try {
               await logout();
-              router.replace('auth/login');
+              router.replace('/auth/login');
             } catch (error) {
               Alert.alert('Lỗi', 'Đăng xuất thất bại. Vui lòng thử lại.');
             }
