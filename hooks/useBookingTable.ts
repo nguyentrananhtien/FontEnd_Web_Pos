@@ -113,15 +113,28 @@ export const useBookingTables = () => {
   const handleBookTable = async () => {
     if (!selectedTableCode) return;
     const totalGuestsNumber = Number(formData.totalGuests);
+
     // Validate đơn giản
     if (!formData.name || !formData.email || !formData.phone || !totalGuestsNumber || totalGuestsNumber < 1) {
       Alert.alert('Lỗi', 'Vui lòng điền đầy đủ thông tin');
       return;
     }
+
+    // Validate số lượng khách không vượt quá sức chứa của bàn
+    const selectedTable = tables.find(t => t.tableCode === selectedTableCode);
+    if (selectedTable && totalGuestsNumber > selectedTable.seatingCapacity) {
+      Alert.alert(
+        'Lỗi',
+        `Số lượng khách (${totalGuestsNumber}) vượt quá sức chứa của bàn (${selectedTable.seatingCapacity} người). Vui lòng chọn bàn khác hoặc giảm số lượng khách.`
+      );
+      return;
+    }
+
     setBookingLoading(true);
 
     try {
       const payload: BookingRequest = {
+        userId: user?.id, // Thêm userId của user đang đăng nhập
         name: formData.name,
         email: formData.email,
         phone: formData.phone,

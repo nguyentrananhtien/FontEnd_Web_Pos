@@ -101,15 +101,12 @@ axiosInstance.interceptors.response.use(
     // 502 Bad Gateway - Backend might be down or ngrok issue
     if (error.response?.status === 502) {
       console.error('🔥 [API] 502 Bad Gateway - Possible causes:');
-      console.error('   1. Backend server is not running');
-      console.error('   2. Ngrok tunnel is down');
-      console.error('   3. Wrong backend URL in .env');
       console.error(`   Current URL: ${API_CONFIG.BASE_URL}`);
 
       // Don't retry on 502
       return Promise.reject({
         ...error,
-        message: '🔥 Backend không phản hồi. Kiểm tra: 1) Backend đang chạy? 2) Ngrok đang hoạt động? 3) URL trong .env đúng?',
+        message: '🔥 Backend không phản hồi.',
         userMessage: 'Không thể kết nối đến máy chủ. Vui lòng thử lại sau.',
       });
     }
@@ -786,7 +783,7 @@ export interface ReservationDTO {
   timeSlotId: number;
   timeSlotLabel?: string;
   numberOfGuests: number;
-  status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
+  status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' | 'CHECKED_IN';
   notes?: string;
   createdAt?: string;
   updatedAt?: string;

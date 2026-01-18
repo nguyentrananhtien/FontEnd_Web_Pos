@@ -11,6 +11,7 @@ import {
     TouchableOpacity,
     View,
     StyleSheet,
+    Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { WaterDropLoader } from '@/components/WaterDropLoader';
@@ -60,14 +61,18 @@ export default function LoginScreen() {
                 {isLoading && (
                     <View style={styles.loaderOverlay}>
                         <WaterDropLoader size={60} color="#ffffff" />
-                        <Text style={styles.loadingText}>Connecting to Google...</Text>
+                        <Text style={styles.loadingText}>Connecting...</Text>
                     </View>
                 )}
 
                 <ScrollView contentContainerStyle={{ flexGrow: 1 }} className="flex-1">
                     <View className="flex-1 justify-center p-6">
                         <View className="items-center mb-10">
-                            <Text className="text-5xl">🍽️</Text>
+                            <Image
+                                source={require('@/assets/images/logo.png')}
+                                style={{ width: 100, height: 100, marginBottom: 12 }}
+                                resizeMode="contain"
+                            />
                             <Text className="text-3xl font-bold text-white mb-2">Restaurant POS</Text>
                             <Text className="text-base text-white/90">Đăng nhập để tiếp tục</Text>
                         </View>

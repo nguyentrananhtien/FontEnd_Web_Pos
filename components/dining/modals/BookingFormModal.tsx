@@ -17,26 +17,29 @@ export default function BookingFormModal({
           <Text style={styles.modalTitle}>Đặt bàn {tableCode}</Text>
 
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.disabledInput]}
             placeholder="Họ và tên"
             value={formData.name}
             onChangeText={(text) => onFormChange('name', text)}
+            editable={false}
           />
 
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.disabledInput]}
             placeholder="Email"
             keyboardType="email-address"
             value={formData.email}
             onChangeText={(text) => onFormChange('email', text)}
+            editable={false}
           />
 
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.disabledInput]}
             placeholder="Số điện thoại"
             keyboardType="phone-pad"
             value={formData.phone}
             onChangeText={(text) => onFormChange('phone', text)}
+            editable={false}
           />
 
           <TextInput
@@ -93,6 +96,10 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 12,
     fontSize: 16,
+  },
+  disabledInput: {
+    backgroundColor: '#f5f5f5',
+    color: '#999',
   },
   buttonRow: {
     flexDirection: 'row',

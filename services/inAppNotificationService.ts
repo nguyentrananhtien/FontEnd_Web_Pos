@@ -52,9 +52,14 @@ export async function initializeNotifications(): Promise<boolean> {
       });
     }
 
-    console.log('✅ Notifications initialized');
+    console.log('✅ Notifications initialized (in-app only for SDK 53+)');
     return true;
-  } catch (error) {
+  } catch (error: any) {
+    // Ignore push notification errors in Expo Go SDK 53+
+    if (error?.message?.includes('Push notifications') || error?.message?.includes('projectId')) {
+      console.log('ℹ️ Using in-app notifications only (Expo Go SDK 53+)');
+      return true;
+    }
     console.error('❌ Error initializing notifications:', error);
     return false;
   }

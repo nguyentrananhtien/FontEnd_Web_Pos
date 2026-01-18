@@ -36,7 +36,7 @@ export default function ResetPasswordScreen() {
 
             Alert.alert('Thành công', 'Mật khẩu đã được cập nhật. Vui lòng đăng nhập lại.',
                 [
-                    {text: 'OK', onPress: () => router.replace('/login')}
+                    {text: 'OK', onPress: () => router.replace('/auth/login')}
                 ]);
         } catch (error: any) {
             const msg = error.response?.data || 'Mã xác thực không chính xác';

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Image, Alert, TextInput, ScrollView, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, TextInput, ScrollView, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, Href } from 'expo-router';
@@ -150,7 +150,7 @@ export default function CartScreen() {
   };
 
   const handleBrowseMenu = () => {
-    router.push("/(tabs)/screen/menu" as Href);
+    router.push("/(tabs)/menu" as Href);
   };
 
   return (

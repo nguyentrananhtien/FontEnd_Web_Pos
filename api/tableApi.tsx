@@ -10,7 +10,6 @@ export const getTables = async (): Promise<DiningTableProps[]> => {
   try {
     const res = await api.get(`${API_CONFIG.ENDPOINTS.TABLES}`);
 
-    // 👇 đảm bảo luôn trả về array
     return Array.isArray(res.data?.data)
       ? res.data.data
       : [];

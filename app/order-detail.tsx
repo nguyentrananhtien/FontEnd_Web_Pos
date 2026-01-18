@@ -96,7 +96,7 @@ export default function OrderDetailScreen() {
         orderId: order.id!,
         amount: order.totalAmount,
         orderInfo: `Payment for Order #${order.id}`,
-        returnUrl: 'yourapp://payment-callback',
+        returnUrl: process.env.EXPO_PUBLIC_VNPAY_RETURN_URL,
       };
 
       const response = await orderApi.createVNPayPayment(paymentData);
