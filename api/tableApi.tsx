@@ -64,3 +64,16 @@ export const getTablesAvailale = async (
     throw error;
   }
 };
+
+export const checkIn = async (payload: any) => {
+  try {
+    const res = await api.post(
+      API_CONFIG.ENDPOINTS.TABLE_CHECK_IN,
+      payload // ✅ gửi payload
+    );
+    return res.data;
+  } catch (error) {
+    console.error("Failed to check-in:", error);
+    throw error;
+  }
+};
