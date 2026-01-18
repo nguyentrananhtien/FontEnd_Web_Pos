@@ -174,6 +174,7 @@ export interface GlobalSearchResponseDTO {
 
 // Booking and Table related types (moved from props/)
 export interface BookingRequest {
+  userId?: number; // User ID của user đang đăng nhập
   name: string;
   email: string;
   phone: string;

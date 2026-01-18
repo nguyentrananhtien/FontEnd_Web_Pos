@@ -79,25 +79,27 @@ export default function TabLayout() {
     <Tabs.Screen
         name="vnpaytest"
         options={{
-            title: "Test",
+            title: "TestVNpay",
             tabBarIcon: ({ color }) => (
                 <MaterialIcons name="receipt-long" size={24} color={color} />
             ),
         }}
     />
-      {/* Hidden screens - accessible via navigation but not shown in tab bar */}
+        <Tabs.Screen
+            name="notitest"
+            options={{
+                title: "TestNoti",
+                tabBarIcon: ({ color }) => (
+                    <MaterialIcons name="receipt-long" size={24} color={color} />
+                ),
+            }}
+        />
+
       <Tabs.Screen
         name="cart"
         options={{
           href: null, // Hide from tab bar
           title: "Cart",
-        }}
-      />
-
-      <Tabs.Screen
-        name="screen"
-        options={{
-          href: null, // Hide from tab bar
         }}
       />
     </Tabs>

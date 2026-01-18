@@ -36,7 +36,7 @@ export default function OrderConfirmationScreen() {
       const reservations = await reservationApi.getByUserId(user.id);
       // Only show confirmed reservations that haven't been completed or cancelled
       const activeReservations = reservations.filter(
-        r => r.status === 'CONFIRMED' || r.status === 'PENDING'
+        r => r.status === 'CHECKED_IN' || r.status === 'PENDING'
       );
       setUserReservations(activeReservations);
     } catch (error) {

@@ -5,6 +5,7 @@ import {
   View,
   Text,
   ScrollView,
+  Image,
   TouchableOpacity,
   TextInput,
   Animated,
@@ -26,6 +27,7 @@ export default function HomeScreen() {
   const [featuredDishes, setFeaturedDishes] = useState<DishDTO[]>([]);
   const [dishesLoading, setDishesLoading] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const floatAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -33,7 +35,20 @@ export default function HomeScreen() {
       duration: 500,
       useNativeDriver: true,
     }).start();
-
+    Animated.loop(
+        Animated.sequence([
+          Animated.timing(floatAnim, {
+            toValue: -10,
+            duration: 2000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(floatAnim, {
+            toValue: 0,
+            duration: 2000,
+            useNativeDriver: true,
+          }),
+        ])
+    ).start();
     // Load user data and featured dishes
     refreshUserData();
     loadFeaturedDishes();
@@ -263,29 +278,35 @@ export default function HomeScreen() {
 
               <View className="px-6 py-6 bg-gray-50">
                 <TouchableOpacity
-                  className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl overflow-hidden active:opacity-90"
-                  activeOpacity={0.7}
-                  onPress={() => Alert.alert('Về chúng tôi', 'Chức năng đang phát triển')}
+                    className="bg-orange-500 rounded-2xl overflow-hidden active:opacity-90 relative"
+                    activeOpacity={0.7}
+                    onPress={() => Alert.alert('Về chúng tôi', 'Chức năng đang phát triển')}
+                    style={{ height: 200 }}
                 >
-                  <View className="bg-orange-500 p-6">
+                  <Image
+                      source={require('@/assets/images/logo.png')}
+                      style={{
+                        position: 'absolute',
+                        width: '100%',
+                        height: '100%',
+                        resizeMode: 'cover',
+                        opacity: 0.3
+                      }}
+                  />
+                  <Animated.View
+                      style={{
+                        padding: 24,
+                        transform: [{ translateY: floatAnim }]
+                      }}
+                  >
                     <Text className="text-white font-bold text-2xl mb-2">Về nhà hàng</Text>
-                    <Text className="text-white/90 text-sm">
+                    <Text className="text-white/90 text-xl">
                       Khám phá câu chuyện, địa điểm và những điều đặc biệt của chúng tôi
                     </Text>
-                  </View>
+                  </Animated.View>
                 </TouchableOpacity>
               </View>
 
-              <View className="px-6 py-6 pb-24 bg-gray-50">
-                <Text className="text-gray-800 font-bold text-lg mb-4">
-                  Special Offers
-                </Text>
-                <View className="bg-white rounded-2xl p-4 shadow-sm">
-                  <Text className="text-gray-600 text-center">
-                    Check back soon for amazing deals!
-                  </Text>
-                </View>
-              </View>
             </ScrollView>
           </Animated.View>
 
