@@ -1,4 +1,4 @@
-import { API_CONFIG } from "@/services/config";
+import { checkIn } from "@/api/tableApi";
 import { format } from "date-fns";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -66,6 +66,7 @@ export default function Food() {
       Alert.alert("Lỗi", "Vui lòng nhập mã đặt bàn");
       return;
     }
+
     if (!selectedSlotId) {
       Alert.alert("Lỗi", "Vui lòng chọn khung giờ");
       return;
@@ -75,25 +76,21 @@ export default function Food() {
     try {
       const payload = {
         bookingCode: bookingCode.trim(),
-        tableCode: tableCode, // 👈 Dùng trực tiếp tableCode từ QR
+        tableCode: tableCode, // ✅ lấy từ QR
         date: format(new Date(), "yyyy-MM-dd"),
         slotId: selectedSlotId,
       };
 
-      const res = await fetch(`${API_CONFIG.BASE_URL}/tables/check-in`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      console.log("Check-in payload:", payload);
 
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Check-in thất bại");
-      }
+      await checkIn(payload); // ✅ nếu lỗi backend sẽ throw
 
       setCheckInSuccess(true);
     } catch (err: any) {
-      Alert.alert("Check-in thất bại", err.message || "Có lỗi xảy ra");
+      Alert.alert(
+        "Check-in thất bại",
+        err?.response?.data?.message || err.message || "Có lỗi xảy ra"
+      );
     } finally {
       setIsLoading(false);
     }
